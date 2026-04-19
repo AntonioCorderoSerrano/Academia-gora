@@ -19,19 +19,14 @@ export default function ClasesPage() {
       const all = Object.entries(data).map(([id, c]) => ({ id, ...c }));
 
       let list = [];
-      if (profile.role === ROLES.ADMIN) {
-        list = all;
-      } else if (profile.role === ROLES.MAESTRO) {
+      if (profile.role === ROLES.ADMIN) list = all;
+      else if (profile.role === ROLES.MAESTRO)
         list = all.filter((c) => c.maestroId === user.uid);
-      } else if (profile.role === ROLES.ALUMNO) {
-        // Solo clases donde el alumno está inscrito
+      else if (profile.role === ROLES.ALUMNO)
         list = all.filter((c) => c.alumnos && c.alumnos[user.uid]);
-      } else if (profile.role === ROLES.TUTOR) {
-        // Tutor ve clases de sus hijos
+      else if (profile.role === ROLES.TUTOR) {
         const hijos = profile.hijos ? Object.keys(profile.hijos) : [];
-        list = all.filter((c) =>
-          c.alumnos && hijos.some((h) => c.alumnos[h])
-        );
+        list = all.filter((c) => c.alumnos && hijos.some((h) => c.alumnos[h]));
       }
       setClases(list);
     });
@@ -45,10 +40,10 @@ export default function ClasesPage() {
 
   return (
     <div>
-      <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
         <div>
-          <h1 className="font-display text-4xl">Mis clases</h1>
-          <p className="text-ink-600">
+          <h1 className="font-display text-3xl sm:text-4xl">Mis clases</h1>
+          <p className="text-ink-600 text-sm sm:text-base">
             {profile.role === ROLES.ALUMNO && 'Clases en las que estás inscrito.'}
             {profile.role === ROLES.MAESTRO && 'Clases que impartes.'}
             {profile.role === ROLES.ADMIN && 'Todas las clases de la academia.'}
@@ -63,37 +58,37 @@ export default function ClasesPage() {
         )}
       </header>
 
-      <div className="card p-2 mb-6 flex items-center">
-        <Search size={18} className="ml-3 text-ink-400" />
-        <input placeholder="Buscar por nombre o nivel…"
+      <div className="card p-2 mb-5 sm:mb-6 flex items-center">
+        <Search size={18} className="ml-3 text-ink-400 shrink-0" />
+        <input placeholder="Buscar…"
           value={filtro} onChange={(e) => setFiltro(e.target.value)}
           className="bg-transparent px-3 py-2 flex-1 outline-none text-sm" />
       </div>
 
       {filtered.length === 0 ? (
-        <div className="card p-10 text-center text-ink-500">
+        <div className="card p-8 sm:p-10 text-center text-ink-500 text-sm sm:text-base">
           {profile.role === ROLES.ALUMNO
             ? 'Aún no estás inscrito en ninguna clase. Pide a tu maestro que te añada.'
             : 'No hay clases que mostrar.'}
         </div>
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {filtered.map((c) => (
             <Link key={c.id} href={`/dashboard/clases/${c.id}`}
-              className="card p-5 hover:shadow-elegant transition group">
-              <div className="flex items-start justify-between">
+              className="card p-4 sm:p-5 hover:shadow-elegant transition group">
+              <div className="flex items-start justify-between gap-2">
                 <span className="chip bg-accent/10 text-accent-deep">{c.nivel || 'Clase'}</span>
                 {c.precio > 0 && c.tipoCobro === 'unico' && (
                   <span className="font-display text-ink-700">{c.precio}€</span>
                 )}
               </div>
-              <h3 className="font-display text-xl mt-3 group-hover:text-accent-deep transition">
+              <h3 className="font-display text-lg sm:text-xl mt-3 group-hover:text-accent-deep transition break-words">
                 {c.nombre}
               </h3>
               <p className="text-sm text-ink-600 mt-2 line-clamp-2">{c.descripcion}</p>
-              <div className="mt-4 pt-4 border-t border-ink-100 flex justify-between text-xs text-ink-500">
+              <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-ink-100 flex justify-between text-xs text-ink-500">
                 <span>{c.alumnos ? Object.keys(c.alumnos).length : 0} alumnos</span>
-                <span>{c.horario || 'Sin horario'}</span>
+                <span className="truncate ml-2">{c.horario || 'Sin horario'}</span>
               </div>
             </Link>
           ))}

@@ -11,6 +11,7 @@ export default function AsistenciaPage() {
   const [clases, setClases] = useState([]);
 
   useEffect(() => {
+    if (!user || !profile) return;
     const unsub = onValue(ref(db, 'clases'), (snap) => {
       const data = snap.val() || {};
       const all = Object.entries(data).map(([id, c]) => ({ id, ...c }));
@@ -24,7 +25,6 @@ export default function AsistenciaPage() {
     return () => unsub();
   }, [user, profile]);
 
-  // Para alumno: calcular resumen propio
   const resumenAlumno = (clase) => {
     if (!clase.asistencia) return { presente: 0, ausente: 0, total: 0 };
     let presente = 0, ausente = 0;
@@ -38,27 +38,28 @@ export default function AsistenciaPage() {
 
   return (
     <div>
-      <h1 className="font-display text-4xl mb-2">Asistencia</h1>
-      <p className="text-ink-600 mb-8">
-        {profile.role === ROLES.ALUMNO ? 'Tu historial por clase' : 'Gestiona la asistencia de cada clase'}
+      <h1 className="font-display text-3xl sm:text-4xl mb-1 sm:mb-2">Asistencia</h1>
+      <p className="text-ink-600 mb-6 sm:mb-8 text-sm sm:text-base">
+        {profile.role === ROLES.ALUMNO
+          ? 'Toca una clase para revisar tu historial y confirmar asistencia.'
+          : 'Toca una clase para registrar la asistencia de tus alumnos.'}
       </p>
 
       {clases.length === 0 ? (
-        <div className="card p-10 text-center text-ink-500">No hay clases.</div>
+        <div className="card p-8 sm:p-10 text-center text-ink-500 text-sm sm:text-base">
+          No hay clases.
+        </div>
       ) : (
-        <div className="grid md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
           {clases.map((c) => {
             const r = profile.role === ROLES.ALUMNO ? resumenAlumno(c) : null;
             return (
-              <Link
-                key={c.id}
-                href={`/dashboard/clases/${c.id}`}
-                className="card p-5 hover:shadow-elegant transition"
-              >
+              <Link key={c.id} href={`/dashboard/clases/${c.id}?tab=asistencia`}
+                className="card p-4 sm:p-5 hover:shadow-elegant transition">
                 <p className="text-xs uppercase tracking-wider text-accent-deep">{c.nivel}</p>
-                <h3 className="font-display text-xl mt-1">{c.nombre}</h3>
+                <h3 className="font-display text-lg sm:text-xl mt-1 break-words">{c.nombre}</h3>
                 {r ? (
-                  <div className="mt-4 flex gap-4 text-sm">
+                  <div className="mt-3 sm:mt-4 flex flex-wrap gap-x-4 gap-y-1 text-sm">
                     <span className="text-green-700">{r.presente} presente</span>
                     <span className="text-red-700">{r.ausente} ausente</span>
                     {r.total > 0 && (
@@ -68,9 +69,7 @@ export default function AsistenciaPage() {
                     )}
                   </div>
                 ) : (
-                  <p className="mt-3 text-sm text-ink-500">
-                    Ir a la pestaña asistencia en la clase →
-                  </p>
+                  <p className="mt-3 text-sm text-ink-500">Registrar asistencia →</p>
                 )}
               </Link>
             );

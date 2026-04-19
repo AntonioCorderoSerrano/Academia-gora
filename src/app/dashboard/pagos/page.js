@@ -39,7 +39,6 @@ export default function PagosPage() {
       await stripe.redirectToCheckout({ sessionId });
     } catch (err) {
       toast.error('Error al iniciar la suscripción');
-      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -65,19 +64,22 @@ export default function PagosPage() {
 
   return (
     <div>
-      <h1 className="font-display text-4xl mb-2">Pagos y suscripción</h1>
-      <p className="text-ink-600 mb-8">Gestiona tu membresía y consulta tu historial.</p>
+      <h1 className="font-display text-3xl sm:text-4xl mb-1 sm:mb-2">Pagos y suscripción</h1>
+      <p className="text-ink-600 mb-6 sm:mb-8 text-sm sm:text-base">
+        Gestiona tu membresía y consulta tu historial.
+      </p>
 
-      {/* Estado de suscripción */}
-      <div className="card p-6 md:p-8 mb-8">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+      <div className="card p-5 sm:p-6 md:p-8 mb-6 sm:mb-8">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
           <div>
-            <p className="text-sm uppercase tracking-widest text-accent-deep">Suscripción mensual</p>
-            <h2 className="font-display text-3xl mt-1">
+            <p className="text-xs sm:text-sm uppercase tracking-widest text-accent-deep">
+              Suscripción mensual
+            </p>
+            <h2 className="font-display text-2xl sm:text-3xl mt-1">
               {profile.suscripcionActiva ? 'Membresía activa' : 'Sin membresía'}
             </h2>
-            <p className="text-ink-600 mt-2">
-              Acceso a todas las clases incluidas en la suscripción. Las clases premium se pagan aparte.
+            <p className="text-ink-600 mt-2 text-sm sm:text-base">
+              Acceso a todas las clases incluidas. Las premium se pagan aparte.
             </p>
             {profile.suscripcionActiva && (
               <p className="mt-3 inline-flex items-center gap-2 text-sm text-green-700">
@@ -86,14 +88,14 @@ export default function PagosPage() {
             )}
           </div>
 
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2 w-full md:w-auto">
             {!profile.suscripcionActiva ? (
-              <button onClick={suscribirse} disabled={loading} className="btn-accent">
+              <button onClick={suscribirse} disabled={loading} className="btn-accent w-full md:w-auto">
                 <CreditCard size={16} />
                 {loading ? 'Redirigiendo…' : 'Suscribirme'}
               </button>
             ) : (
-              <button onClick={abrirPortal} disabled={loading} className="btn-outline">
+              <button onClick={abrirPortal} disabled={loading} className="btn-outline w-full md:w-auto">
                 Gestionar suscripción
               </button>
             )}
@@ -101,31 +103,28 @@ export default function PagosPage() {
         </div>
       </div>
 
-      {/* Historial */}
-      <h2 className="font-display text-2xl mb-4 flex items-center gap-2">
+      <h2 className="font-display text-xl sm:text-2xl mb-3 sm:mb-4 flex items-center gap-2">
         <Receipt size={20} className="text-accent-deep" /> Historial
       </h2>
       {pagos.length === 0 ? (
-        <div className="card p-10 text-center text-ink-500">
+        <div className="card p-8 sm:p-10 text-center text-ink-500 text-sm sm:text-base">
           Aún no hay movimientos.
         </div>
       ) : (
         <div className="card divide-y divide-ink-100">
           {pagos.map((p) => (
-            <div key={p.id} className="p-4 flex items-center justify-between">
-              <div>
-                <p className="font-medium">{p.concepto || 'Pago'}</p>
+            <div key={p.id} className="p-3 sm:p-4 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-medium truncate">{p.concepto || 'Pago'}</p>
                 <p className="text-xs text-ink-500">
                   {new Date(p.createdAt || Date.now()).toLocaleString('es-ES')}
                 </p>
               </div>
-              <div className="text-right">
-                <p className="font-display text-lg">
+              <div className="text-right shrink-0">
+                <p className="font-display text-base sm:text-lg">
                   {((p.amount || 0) / 100).toFixed(2)} €
                 </p>
-                <p className={`text-xs ${
-                  p.status === 'paid' ? 'text-green-700' : 'text-ink-500'
-                }`}>
+                <p className={`text-xs ${p.status === 'paid' ? 'text-green-700' : 'text-ink-500'}`}>
                   {p.status}
                 </p>
               </div>

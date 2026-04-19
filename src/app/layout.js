@@ -3,8 +3,17 @@ import { AuthProvider } from '@/context/AuthContext';
 import { Toaster } from 'react-hot-toast';
 
 export const metadata = {
-  title: 'Academia — Plataforma educativa',
-  description: 'Gestión integral de clases, alumnos y pagos',
+  title: 'Academia Ágora — Plataforma educativa',
+  description: 'Gestión integral de clases, alumnos, pagos y clases en directo',
+  icons: {
+    icon: '/logo.svg',
+  },
+};
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
 };
 
 export default function RootLayout({ children }) {

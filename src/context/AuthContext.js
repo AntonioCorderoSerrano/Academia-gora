@@ -23,8 +23,6 @@ export const ROLES = {
   TUTOR: 'tutor',
 };
 
-// Estados de la sesión:
-//  loading | unauth | unverified | pending | active
 export const SESSION_STATE = {
   LOADING: 'loading',
   UNAUTH: 'unauth',
@@ -32,6 +30,15 @@ export const SESSION_STATE = {
   PENDING: 'pending',
   ACTIVE: 'active',
 };
+
+// Construye la URL de retorno completa o null si no podemos determinarla.
+function buildActionSettings() {
+  const base =
+    (typeof window !== 'undefined' && window.location?.origin) ||
+    process.env.NEXT_PUBLIC_APP_URL;
+  if (!base) return undefined;
+  return { url: `${base}/login`, handleCodeInApp: false };
+}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -49,8 +56,11 @@ export function AuthProvider({ children }) {
       try { await reload(fbUser); } catch {}
 
       setUser(fbUser);
-      const snap = await get(ref(db, `usuarios/${fbUser.uid}`));
-      const data = snap.exists() ? snap.val() : null;
+      let data = null;
+      try {
+        const snap = await get(ref(db, `usuarios/${fbUser.uid}`));
+        data = snap.exists() ? snap.val() : null;
+      } catch {}
       setProfile(data);
 
       if (!fbUser.emailVerified) {
@@ -86,7 +96,7 @@ export function AuthProvider({ children }) {
       email,
       telefono,
       role,
-      sinCobro: role === ROLES.MAESTRO,   // maestros exentos de pagos
+      sinCobro: role === ROLES.MAESTRO,
       approved: false,
       approvedAt: null,
       createdAt: serverTimestamp(),
@@ -96,29 +106,47 @@ export function AuthProvider({ children }) {
     await set(ref(db, `usuarios/${cred.user.uid}`), userData);
     setProfile(userData);
 
+    // IMPORTANTE: enviamos el email de verificación y esperamos a que
+    // termine antes de devolver el control. La llamada debe hacerse con
+    // el usuario AUTENTICADO (no hacer signOut antes).
     try {
-      await sendEmailVerification(cred.user, {
-        url: `${process.env.NEXT_PUBLIC_APP_URL || ''}/login`,
-      });
+      await sendEmailVerification(cred.user, buildActionSettings());
     } catch (e) {
-      console.warn('No se pudo enviar email de verificación:', e);
+      // No bloqueamos el registro si Firebase rate-limitea: el usuario
+      // podrá reenviar desde la pantalla de estado.
+      console.warn('No se pudo enviar email de verificación en registro:', e);
     }
+
+    // Avisar a los admins (fire-and-forget)
+    try {
+      fetch('/api/notifications/new-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid: cred.user.uid, nombre, email, role }),
+      }).catch(() => {});
+    } catch {}
+
     return cred;
   };
 
   const resendVerification = async () => {
-    if (auth.currentUser) {
-      await sendEmailVerification(auth.currentUser, {
-        url: `${process.env.NEXT_PUBLIC_APP_URL || ''}/login`,
-      });
+    if (!auth.currentUser) throw new Error('Sin sesión');
+    await reload(auth.currentUser);
+    if (auth.currentUser.emailVerified) {
+      await refreshStatus();
+      return;
     }
+    await sendEmailVerification(auth.currentUser, buildActionSettings());
   };
 
   const refreshStatus = async () => {
     if (!auth.currentUser) return;
     await reload(auth.currentUser);
-    const snap = await get(ref(db, `usuarios/${auth.currentUser.uid}`));
-    const data = snap.exists() ? snap.val() : null;
+    let data = null;
+    try {
+      const snap = await get(ref(db, `usuarios/${auth.currentUser.uid}`));
+      data = snap.exists() ? snap.val() : null;
+    } catch {}
     setProfile(data);
     if (!auth.currentUser.emailVerified) setStatus(SESSION_STATE.UNVERIFIED);
     else if (data?.role === ROLES.ADMIN || data?.approved) setStatus(SESSION_STATE.ACTIVE);

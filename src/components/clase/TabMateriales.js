@@ -2,9 +2,7 @@
 
 import { useState } from 'react';
 import { ref as dbRef, push, remove, set, serverTimestamp } from 'firebase/database';
-import {
-  ref as stRef, uploadBytes, getDownloadURL, deleteObject,
-} from 'firebase/storage';
+import { ref as stRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import { Upload, FileText, Download, Trash2 } from 'lucide-react';
@@ -52,7 +50,6 @@ export default function TabMateriales({ clase, puedeGestionar }) {
       });
       toast.success('Archivo subido');
     } catch (err) {
-      console.error(err);
       toast.error('Error al subir');
     } finally {
       setSubiendo(false);
@@ -64,9 +61,7 @@ export default function TabMateriales({ clase, puedeGestionar }) {
     if (!confirm(`¿Eliminar "${m.nombre}"?`)) return;
     try {
       if (m.storagePath) await deleteObject(stRef(storage, m.storagePath));
-    } catch (e) {
-      // si el archivo ya no existe en Storage, seguimos
-    }
+    } catch {}
     await remove(dbRef(db, `clases/${clase.id}/materiales/${m.id}`));
     toast.success('Archivo eliminado');
   };
@@ -74,11 +69,11 @@ export default function TabMateriales({ clase, puedeGestionar }) {
   return (
     <div>
       {puedeGestionar && (
-        <label className="card p-6 mb-6 flex items-center justify-center cursor-pointer border-dashed border-2 border-ink-200 hover:border-accent transition block">
+        <label className="card p-5 sm:p-6 mb-5 sm:mb-6 flex items-center justify-center cursor-pointer border-dashed border-2 border-ink-200 hover:border-accent transition block">
           <input type="file" className="hidden" onChange={onUpload} disabled={subiendo} />
           <div className="text-center">
-            <Upload size={28} className="mx-auto text-accent-deep" strokeWidth={1.5} />
-            <p className="font-medium mt-2">
+            <Upload size={24} className="mx-auto text-accent-deep sm:w-7 sm:h-7" strokeWidth={1.5} />
+            <p className="font-medium mt-2 text-sm sm:text-base">
               {subiendo ? 'Subiendo…' : 'Subir material'}
             </p>
             <p className="text-xs text-ink-500">PDF, imágenes, docs — máx. 20 MB</p>
@@ -87,25 +82,27 @@ export default function TabMateriales({ clase, puedeGestionar }) {
       )}
 
       {materiales.length === 0 ? (
-        <div className="card p-10 text-center text-ink-500">
+        <div className="card p-8 sm:p-10 text-center text-ink-500 text-sm sm:text-base">
           Aún no hay materiales.
         </div>
       ) : (
         <div className="card divide-y divide-ink-100">
           {materiales.map((m) => (
-            <div key={m.id} className="p-4 flex items-center gap-4">
+            <div key={m.id} className="p-3 sm:p-4 flex items-center gap-3 sm:gap-4">
               <FileText size={20} className="text-accent-deep shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">{m.nombre}</p>
-                <p className="text-xs text-ink-500">
-                  {formatBytes(m.tamaño || 0)} · Subido por {m.subidoPor}
+                <p className="font-medium truncate text-sm sm:text-base">{m.nombre}</p>
+                <p className="text-xs text-ink-500 truncate">
+                  {formatBytes(m.tamaño || 0)} · {m.subidoPor}
                 </p>
               </div>
-              <a href={m.url} target="_blank" rel="noreferrer" className="btn-ghost">
+              <a href={m.url} target="_blank" rel="noreferrer"
+                className="btn-ghost shrink-0" aria-label="Descargar">
                 <Download size={16} />
               </a>
               {(puedeGestionar || m.subidoPorUid === user.uid) && (
-                <button onClick={() => eliminar(m)} className="btn-ghost text-red-700">
+                <button onClick={() => eliminar(m)} className="btn-ghost text-red-700 shrink-0"
+                  aria-label="Eliminar">
                   <Trash2 size={16} />
                 </button>
               )}

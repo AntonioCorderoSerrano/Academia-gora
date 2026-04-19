@@ -26,8 +26,8 @@ export default function TabAlumnos({ clase, puedeGestionar }) {
       const found = Object.entries(data)
         .filter(([uid, u]) => {
           if (u.role !== 'alumno') return false;
-          if (!u.approved) return false; // solo aprobados
-          if (clase.alumnos?.[uid]) return false; // no ya inscritos
+          if (!u.approved) return false;
+          if (clase.alumnos?.[uid]) return false;
           return (
             u.email?.toLowerCase().includes(qLower) ||
             u.nombre?.toLowerCase().includes(qLower)
@@ -43,10 +43,7 @@ export default function TabAlumnos({ clase, puedeGestionar }) {
 
   const agregar = async (u) => {
     await update(ref(db, `clases/${clase.id}/alumnos/${u.uid}`), {
-      nombre: u.nombre,
-      email: u.email,
-      inscritoEn: Date.now(),
-      agregadoManual: true,
+      nombre: u.nombre, email: u.email, inscritoEn: Date.now(), agregadoManual: true,
     });
     setTermino('');
     setResultados([]);
@@ -62,25 +59,21 @@ export default function TabAlumnos({ clase, puedeGestionar }) {
   return (
     <div>
       {puedeGestionar && (
-        <div className="card p-5 mb-6">
-          <h3 className="font-display text-lg mb-1">Añadir alumno</h3>
-          <p className="text-sm text-ink-500 mb-3">Busca por nombre o correo electrónico.</p>
-          <input
-            placeholder="Escribe al menos 2 letras…"
-            className="field"
-            value={termino}
-            onChange={(e) => buscar(e.target.value)}
-          />
+        <div className="card p-4 sm:p-5 mb-5 sm:mb-6">
+          <h3 className="font-display text-base sm:text-lg mb-1">Añadir alumno</h3>
+          <p className="text-xs sm:text-sm text-ink-500 mb-3">Busca por nombre o correo electrónico.</p>
+          <input placeholder="Escribe al menos 2 letras…" className="field"
+            value={termino} onChange={(e) => buscar(e.target.value)} />
           {buscando && <p className="text-xs text-ink-500 mt-2">Buscando…</p>}
           {resultados.length > 0 && (
             <ul className="mt-3 space-y-2">
               {resultados.map((r) => (
-                <li key={r.uid} className="flex items-center justify-between p-2 rounded hover:bg-ink-50">
-                  <div>
-                    <p className="text-sm font-medium">{r.nombre}</p>
-                    <p className="text-xs text-ink-500">{r.email}</p>
+                <li key={r.uid} className="flex items-center justify-between p-2 rounded hover:bg-ink-50 gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{r.nombre}</p>
+                    <p className="text-xs text-ink-500 truncate">{r.email}</p>
                   </div>
-                  <button onClick={() => agregar(r)} className="btn-primary text-sm py-1.5">
+                  <button onClick={() => agregar(r)} className="btn-primary text-sm py-1.5 shrink-0">
                     Añadir
                   </button>
                 </li>
@@ -94,19 +87,21 @@ export default function TabAlumnos({ clase, puedeGestionar }) {
       )}
 
       {alumnos.length === 0 ? (
-        <div className="card p-10 text-center text-ink-500">Aún no hay alumnos inscritos.</div>
+        <div className="card p-8 sm:p-10 text-center text-ink-500 text-sm sm:text-base">
+          Aún no hay alumnos inscritos.
+        </div>
       ) : (
         <div className="card divide-y divide-ink-100">
           {alumnos.map((a) => (
-            <div key={a.uid} className="p-4 flex items-center justify-between">
-              <div>
-                <p className="font-medium">{a.nombre}</p>
-                <p className="text-sm text-ink-500 flex items-center gap-1">
-                  <Mail size={12} /> {a.email}
+            <div key={a.uid} className="p-3 sm:p-4 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-medium truncate">{a.nombre}</p>
+                <p className="text-xs sm:text-sm text-ink-500 flex items-center gap-1 truncate">
+                  <Mail size={12} className="shrink-0" /> <span className="truncate">{a.email}</span>
                 </p>
               </div>
               {puedeGestionar && (
-                <button onClick={() => quitar(a.uid)} className="btn-ghost text-red-700">
+                <button onClick={() => quitar(a.uid)} className="btn-ghost text-red-700 shrink-0">
                   <UserMinus size={16} />
                 </button>
               )}

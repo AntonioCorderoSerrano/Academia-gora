@@ -37,24 +37,19 @@ export default function TabAsistencia({ clase, puedeGestionar }) {
 
   return (
     <div>
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-5 sm:mb-6">
         <div>
-          <h3 className="font-display text-xl">Asistencia</h3>
-          <p className="text-sm text-ink-500">
+          <h3 className="font-display text-lg sm:text-xl">Asistencia</h3>
+          <p className="text-xs sm:text-sm text-ink-500">
             {puedeGestionar ? 'Registra la asistencia de tus alumnos' : 'Confirma tu asistencia'}
           </p>
         </div>
-        <input
-          type="date"
-          className="field max-w-xs"
-          value={fecha}
-          onChange={(e) => setFecha(e.target.value)}
-        />
+        <input type="date" className="field sm:max-w-xs"
+          value={fecha} onChange={(e) => setFecha(e.target.value)} />
       </div>
 
-      {/* Vista del alumno: check-in propio */}
       {!puedeGestionar && clase.alumnos?.[user.uid] && (
-        <div className="card p-6 mb-6">
+        <div className="card p-5 sm:p-6 mb-5 sm:mb-6">
           <p className="text-ink-600 text-sm">
             Estado de hoy:{' '}
             <span className={`font-medium ${
@@ -64,21 +59,18 @@ export default function TabAsistencia({ clase, puedeGestionar }) {
               {miEstado || 'sin registrar'}
             </span>
           </p>
-          <div className="mt-3 flex gap-2">
-            <button
-              onClick={() => { marcar(user.uid, 'presente'); toast.success('Asistencia confirmada'); }}
-              className="btn-accent text-sm"
-            >
+          <div className="mt-3">
+            <button onClick={() => { marcar(user.uid, 'presente'); toast.success('Confirmada'); }}
+              className="btn-accent text-sm w-full sm:w-auto">
               <Check size={16} /> Estoy presente
             </button>
           </div>
         </div>
       )}
 
-      {/* Vista del maestro */}
       {puedeGestionar && (
         alumnos.length === 0 ? (
-          <div className="card p-10 text-center text-ink-500">
+          <div className="card p-8 sm:p-10 text-center text-ink-500 text-sm sm:text-base">
             No hay alumnos inscritos.
           </div>
         ) : (
@@ -86,26 +78,24 @@ export default function TabAsistencia({ clase, puedeGestionar }) {
             {alumnos.map((a) => {
               const est = registros[a.uid]?.estado;
               return (
-                <div key={a.uid} className="p-4 flex items-center justify-between gap-4">
-                  <div>
-                    <p className="font-medium">{a.nombre}</p>
-                    <p className="text-xs text-ink-500">{a.email}</p>
+                <div key={a.uid} className="p-3 sm:p-4 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-medium truncate">{a.nombre}</p>
+                    <p className="text-xs text-ink-500 truncate">{a.email}</p>
                   </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => marcar(a.uid, 'presente')}
+                  <div className="flex gap-2 shrink-0">
+                    <button onClick={() => marcar(a.uid, 'presente')}
+                      aria-label="Presente"
                       className={`p-2 rounded-lg transition ${
                         est === 'presente' ? 'bg-green-600 text-white' : 'bg-ink-100 hover:bg-green-100'
-                      }`}
-                    >
+                      }`}>
                       <Check size={16} />
                     </button>
-                    <button
-                      onClick={() => marcar(a.uid, 'ausente')}
+                    <button onClick={() => marcar(a.uid, 'ausente')}
+                      aria-label="Ausente"
                       className={`p-2 rounded-lg transition ${
                         est === 'ausente' ? 'bg-red-600 text-white' : 'bg-ink-100 hover:bg-red-100'
-                      }`}
-                    >
+                      }`}>
                       <X size={16} />
                     </button>
                   </div>
