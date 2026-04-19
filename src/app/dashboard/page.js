@@ -9,7 +9,7 @@ import { BookOpen, Users, ShieldCheck, Wallet, Plus, AlertCircle } from 'lucide-
 
 function etiquetaRol(role) {
   if (role === ROLES.MAESTRO) return 'docente';
-  if (role === ROLES.ALUMNO) return 'alumno';
+  if (role === ROLES.ALUMNO) return 'alumno/a';
   if (role === ROLES.TUTOR) return 'tutor';
   if (role === ROLES.ADMIN) return 'admin';
   return role;

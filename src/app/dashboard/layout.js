@@ -43,9 +43,9 @@ export default function DashboardLayout({ children }) {
   const moreWrapperRef = useRef(null);
 
   useEffect(() => {
-    if (status === SESSION_STATE.UNAUTH) router.push('/login');
+    if (status === SESSION_STATE.UNAUTH) router.push('/');
     else if (status === SESSION_STATE.UNVERIFIED || status === SESSION_STATE.PENDING) {
-      router.push('/login');
+      router.push('/');
     }
   }, [status, router]);
 

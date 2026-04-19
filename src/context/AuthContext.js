@@ -37,7 +37,7 @@ function buildActionSettings() {
     (typeof window !== 'undefined' && window.location?.origin) ||
     process.env.NEXT_PUBLIC_APP_URL;
   if (!base) return undefined;
-  return { url: `${base}/login`, handleCodeInApp: false };
+  return { url: `${base}/`, handleCodeInApp: false };
 }
 
 export function AuthProvider({ children }) {
