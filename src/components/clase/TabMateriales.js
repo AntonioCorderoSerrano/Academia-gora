@@ -5,8 +5,9 @@ import { ref as dbRef, push, remove, set, serverTimestamp } from 'firebase/datab
 import { ref as stRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
-import { Upload, FileText, Download, Trash2 } from 'lucide-react';
+import { Upload, FileText, Eye, Trash2, Lock } from 'lucide-react';
 import toast from 'react-hot-toast';
+import VisorArchivo from '@/components/VisorArchivo';
 
 const formatBytes = (b) => {
   if (b < 1024) return b + ' B';
@@ -17,6 +18,7 @@ const formatBytes = (b) => {
 export default function TabMateriales({ clase, puedeGestionar }) {
   const { user, profile } = useAuth();
   const [subiendo, setSubiendo] = useState(false);
+  const [verArchivo, setVerArchivo] = useState(null);
 
   const materiales = clase.materiales
     ? Object.entries(clase.materiales).map(([id, m]) => ({ id, ...m }))
@@ -26,15 +28,23 @@ export default function TabMateriales({ clase, puedeGestionar }) {
   const onUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size > 20 * 1024 * 1024) {
-      toast.error('Archivo demasiado grande (máx. 20 MB)');
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error('Archivo demasiado grande (máx. 50 MB)');
       return;
     }
     setSubiendo(true);
     try {
-      const path = `clases/${clase.id}/${Date.now()}_${file.name}`;
+      // Sanitizar nombre del archivo
+      const nombreLimpio = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+      const path = `clases/${clase.id}/${Date.now()}_${nombreLimpio}`;
       const fileRef = stRef(storage, path);
-      await uploadBytes(fileRef, file);
+
+      // Metadata: forzamos Content-Disposition: inline para evitar descarga directa
+      // y un cache largo. El navegador lo abrirá en lugar de descargarlo.
+      await uploadBytes(fileRef, file, {
+        contentType: file.type || 'application/octet-stream',
+        contentDisposition: `inline; filename="${nombreLimpio}"`,
+      });
       const url = await getDownloadURL(fileRef);
 
       const newRef = push(dbRef(db, `clases/${clase.id}/materiales`));
@@ -50,7 +60,8 @@ export default function TabMateriales({ clase, puedeGestionar }) {
       });
       toast.success('Archivo subido');
     } catch (err) {
-      toast.error('Error al subir');
+      console.error(err);
+      toast.error('Error al subir el archivo');
     } finally {
       setSubiendo(false);
       e.target.value = '';
@@ -76,10 +87,14 @@ export default function TabMateriales({ clase, puedeGestionar }) {
             <p className="font-medium mt-2 text-sm sm:text-base">
               {subiendo ? 'Subiendo…' : 'Subir material'}
             </p>
-            <p className="text-xs text-ink-500">PDF, imágenes, docs — máx. 20 MB</p>
+            <p className="text-xs text-ink-500">PDF, imágenes, vídeo, docs — máx. 50 MB</p>
           </div>
         </label>
       )}
+
+      <div className="mb-3 inline-flex items-center gap-1 text-xs text-ink-500">
+        <Lock size={11} /> Los archivos solo se pueden visualizar, no descargar.
+      </div>
 
       {materiales.length === 0 ? (
         <div className="card p-8 sm:p-10 text-center text-ink-500 text-sm sm:text-base">
@@ -96,10 +111,10 @@ export default function TabMateriales({ clase, puedeGestionar }) {
                   {formatBytes(m.tamaño || 0)} · {m.subidoPor}
                 </p>
               </div>
-              <a href={m.url} target="_blank" rel="noreferrer"
-                className="btn-ghost shrink-0" aria-label="Descargar">
-                <Download size={16} />
-              </a>
+              <button onClick={() => setVerArchivo(m)}
+                className="btn-outline text-sm shrink-0" aria-label="Ver">
+                <Eye size={14} /> <span className="hidden sm:inline">Ver</span>
+              </button>
               {(puedeGestionar || m.subidoPorUid === user.uid) && (
                 <button onClick={() => eliminar(m)} className="btn-ghost text-red-700 shrink-0"
                   aria-label="Eliminar">
@@ -109,6 +124,15 @@ export default function TabMateriales({ clase, puedeGestionar }) {
             </div>
           ))}
         </div>
+      )}
+
+      {verArchivo && (
+        <VisorArchivo
+          url={verArchivo.url}
+          nombre={verArchivo.nombre}
+          tipo={verArchivo.tipo}
+          onClose={() => setVerArchivo(null)}
+        />
       )}
     </div>
   );

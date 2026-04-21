@@ -3,11 +3,9 @@ import { AuthProvider } from '@/context/AuthContext';
 import { Toaster } from 'react-hot-toast';
 
 export const metadata = {
-  title: 'Academia Ágora — Plataforma educativa',
+  title: 'Skolium — Plataforma educativa',
   description: 'Gestión integral de clases, alumnos, pagos y clases en directo',
-  icons: {
-    icon: '/logo.svg',
-  },
+  icons: { icon: '/logo.svg' },
 };
 
 export const viewport = {

@@ -27,17 +27,17 @@ export default function RegisterPage() {
 
   const onSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (form.password.length < 6) {
       toast.error('La contraseña debe tener al menos 6 caracteres');
       return;
     }
-    
+
     if (form.password !== form.confirmPassword) {
       toast.error('Las contraseñas no coinciden');
       return;
     }
-    
+
     setLoading(true);
     try {
       await register(form);
@@ -47,8 +47,8 @@ export default function RegisterPage() {
     } catch (err) {
       toast.error(
         err.code === 'auth/email-already-in-use' ? 'Ese correo ya está en uso' :
-        err.code === 'auth/weak-password' ? 'Contraseña demasiado débil' :
-        'Error al registrar'
+          err.code === 'auth/weak-password' ? 'Contraseña demasiado débil' :
+            'Error al registrar'
       );
     } finally {
       setLoading(false);
@@ -92,7 +92,7 @@ export default function RegisterPage() {
         <div className="flex-shrink-0">
           <Logo size="md" href="/" variant="light" />
         </div>
-        
+
         {/* Contenido centrado verticalmente */}
         <div className="flex-1 flex flex-col justify-center -mt-16">
           <h2 className="font-display text-3xl md:text-4xl lg:text-5xl leading-tight">
@@ -103,7 +103,7 @@ export default function RegisterPage() {
             Regístrate para acceder a tus clases, materiales didácticos y comunicarte con profesores y compañeros.
           </p>
         </div>
-        
+
         <div className="absolute -right-20 -bottom-20 h-60 md:h-80 w-60 md:w-80 rounded-full bg-accent-deep/30 blur-3xl pointer-events-none" />
       </aside>
 
@@ -144,13 +144,13 @@ export default function RegisterPage() {
               <div>
                 <label className="text-sm text-ink-700">Contraseña</label>
                 <div className="relative mt-1">
-                  <input 
-                    type={showPassword ? 'text' : 'password'} 
-                    required minLength={6} 
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required minLength={6}
                     className="field w-full pr-10"
                     autoComplete="new-password"
                     value={form.password}
-                    onChange={(e) => setForm({ ...form, password: e.target.value })} 
+                    onChange={(e) => setForm({ ...form, password: e.target.value })}
                   />
                   <button
                     type="button"
@@ -166,13 +166,13 @@ export default function RegisterPage() {
               <div>
                 <label className="text-sm text-ink-700">Confirmar contraseña</label>
                 <div className="relative mt-1">
-                  <input 
-                    type={showConfirmPassword ? 'text' : 'password'} 
-                    required minLength={6} 
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    required minLength={6}
                     className="field w-full pr-10"
                     autoComplete="new-password"
                     value={form.confirmPassword}
-                    onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })} 
+                    onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
                   />
                   <button
                     type="button"
@@ -190,11 +190,10 @@ export default function RegisterPage() {
                   {ROLE_OPTIONS.map((r) => (
                     <button key={r.value} type="button"
                       onClick={() => setForm({ ...form, role: r.value })}
-                      className={`text-left rounded-lg border p-2.5 sm:p-3 transition ${
-                        form.role === r.value
+                      className={`text-left rounded-lg border p-2.5 sm:p-3 transition ${form.role === r.value
                           ? 'border-accent bg-accent/5'
                           : 'border-ink-200 hover:border-ink-400'
-                      }`}>
+                        }`}>
                       <div className="text-xs sm:text-sm font-medium">{r.label}</div>
                       <div className="text-[10px] sm:text-xs text-ink-500 leading-tight">{r.desc}</div>
                     </button>
@@ -215,7 +214,7 @@ export default function RegisterPage() {
             </form>
           </div>
         </div>
-        
+
         <FooterLegal />
       </section>
     </div>

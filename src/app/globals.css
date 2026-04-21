@@ -3,6 +3,7 @@
 @tailwind components;
 @tailwind utilities;
 
+
 :root {
   --font-display: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
   --font-sans: 'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
@@ -17,10 +18,11 @@ html, body {
   font-size: 16px;
   line-height: 1.5;
   -webkit-tap-highlight-color: transparent;
-  overflow-x: hidden;
 }
 
-html { -webkit-text-size-adjust: 100%; }
+html {
+  -webkit-text-size-adjust: 100%;
+}
 
 body {
   min-height: 100vh;
@@ -39,7 +41,6 @@ h1, h2, h3, h4 {
 
 p, span, a { overflow-wrap: break-word; }
 
-/* Fondo de papel sutil */
 .bg-paper {
   background-color: #f8f7f4;
   background-image:
@@ -47,7 +48,6 @@ p, span, a { overflow-wrap: break-word; }
     radial-gradient(ellipse at bottom right, rgba(28,27,24,.04), transparent 50%);
 }
 
-/* Inputs */
 .field {
   @apply w-full rounded-lg border border-ink-200 bg-white/60 px-3 sm:px-4 py-2.5
          text-ink-900 placeholder:text-ink-400 focus:border-accent focus:outline-none
@@ -80,19 +80,16 @@ p, span, a { overflow-wrap: break-word; }
   @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap;
 }
 
-/* Scrollbar oculto en tabs horizontales */
 .scrollbar-none {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
 .scrollbar-none::-webkit-scrollbar { display: none; }
 
-/* Scrollbar refinado desktop */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: #d1d0cb; border-radius: 10px; }
 ::-webkit-scrollbar-thumb:hover { background: #b0afa6; }
 
-/* Line clamp 2 */
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -100,6 +97,19 @@ p, span, a { overflow-wrap: break-word; }
   overflow: hidden;
 }
 
-/* Safe areas iOS */
 .safe-bottom { padding-bottom: max(0.5rem, env(safe-area-inset-bottom)); }
 .safe-top    { padding-top: max(0.75rem, env(safe-area-inset-top)); }
+
+/* Bloqueo de descarga / selección en visor de archivos */
+.no-download {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  pointer-events: auto;
+}
+.no-download img, .no-download iframe, .no-download embed, .no-download object {
+  -webkit-user-drag: none;
+  pointer-events: none;
+}

@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { ref, remove } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
+import { openExternalUrl } from '@/lib/capacitor';
+import { apiFetch } from '@/lib/api';
 import { Video, Play, Film, Calendar, ExternalLink, Loader2, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -13,9 +15,7 @@ export default function TabDirecto({ clase, puedeGestionar }) {
   const [loadingRecs, setLoadingRecs] = useState(false);
   const [grabaciones, setGrabaciones] = useState(null);
   const [form, setForm] = useState({
-    topic: clase.nombre,
-    start_time: '',
-    duration: 60,
+    topic: clase.nombre, start_time: '', duration: 60,
   });
 
   const meeting = clase.zoomMeeting;
@@ -25,7 +25,7 @@ export default function TabDirecto({ clase, puedeGestionar }) {
     setLoadingCreate(true);
     try {
       const idToken = await user.getIdToken();
-      const res = await fetch('/api/zoom/create-meeting', {
+      const res = await apiFetch('/api/zoom/create-meeting', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
         body: JSON.stringify({
@@ -50,7 +50,7 @@ export default function TabDirecto({ clase, puedeGestionar }) {
     setLoadingRecs(true);
     try {
       const idToken = await user.getIdToken();
-      const res = await fetch(`/api/zoom/recordings?meetingId=${meeting.id}`, {
+      const res = await apiFetch(`/api/zoom/recordings?meetingId=${meeting.id}`, {
         headers: { Authorization: `Bearer ${idToken}` },
       });
       const data = await res.json();
@@ -70,7 +70,11 @@ export default function TabDirecto({ clase, puedeGestionar }) {
     toast.success('Reunión desvinculada');
   };
 
-  // Vista alumno
+  const abrir = (e, url) => {
+    if (e) e.preventDefault();
+    openExternalUrl(url);
+  };
+
   if (!puedeGestionar) {
     return (
       <div className="space-y-5 sm:space-y-6">
@@ -91,9 +95,9 @@ export default function TabDirecto({ clase, puedeGestionar }) {
               </div>
             </div>
             <div className="mt-4 flex flex-col sm:flex-row flex-wrap gap-2">
-              <a href={meeting.join_url} target="_blank" rel="noreferrer" className="btn-accent w-full sm:w-auto">
+              <button onClick={(e) => abrir(e, meeting.join_url)} className="btn-accent w-full sm:w-auto">
                 <Play size={16} /> Entrar al directo
-              </a>
+              </button>
               <button onClick={cargarGrabaciones} className="btn-outline w-full sm:w-auto">
                 <Film size={16} /> Ver diferido
               </button>
@@ -101,16 +105,15 @@ export default function TabDirecto({ clase, puedeGestionar }) {
           </div>
         ) : (
           <div className="card p-8 sm:p-10 text-center text-ink-500 text-sm sm:text-base">
-            Tu maestro aún no ha programado la clase en directo.
+            Tu docente aún no ha programado la clase en directo.
           </div>
         )}
 
-        <GrabacionesList loading={loadingRecs} items={grabaciones} />
+        <GrabacionesList loading={loadingRecs} items={grabaciones} onOpen={abrir} />
       </div>
     );
   }
 
-  // Vista maestro
   return (
     <div className="space-y-5 sm:space-y-6">
       {meeting ? (
@@ -134,12 +137,12 @@ export default function TabDirecto({ clase, puedeGestionar }) {
           </div>
 
           <div className="mt-4 flex flex-col sm:flex-row flex-wrap gap-2">
-            <a href={meeting.start_url} target="_blank" rel="noreferrer" className="btn-accent w-full sm:w-auto">
+            <button onClick={(e) => abrir(e, meeting.start_url)} className="btn-accent w-full sm:w-auto">
               <Play size={16} /> Iniciar como host
-            </a>
-            <a href={meeting.join_url} target="_blank" rel="noreferrer" className="btn-outline w-full sm:w-auto">
+            </button>
+            <button onClick={(e) => abrir(e, meeting.join_url)} className="btn-outline w-full sm:w-auto">
               <ExternalLink size={16} /> Enlace alumno
-            </a>
+            </button>
             <button onClick={cargarGrabaciones} className="btn-outline w-full sm:w-auto">
               {loadingRecs ? <Loader2 size={16} className="animate-spin" /> : <Film size={16} />}
               Ver grabaciones
@@ -165,7 +168,7 @@ export default function TabDirecto({ clase, puedeGestionar }) {
                 <input type="datetime-local" className="field mt-1"
                   value={form.start_time}
                   onChange={(e) => setForm({ ...form, start_time: e.target.value })} />
-                <p className="text-xs text-ink-500 mt-1">Si se deja vacío → reunión instantánea.</p>
+                <p className="text-xs text-ink-500 mt-1">Si se deja vacío → instantánea.</p>
               </div>
               <div>
                 <label className="text-sm text-ink-700">Duración (min)</label>
@@ -182,12 +185,12 @@ export default function TabDirecto({ clase, puedeGestionar }) {
         </div>
       )}
 
-      <GrabacionesList loading={loadingRecs} items={grabaciones} />
+      <GrabacionesList loading={loadingRecs} items={grabaciones} onOpen={abrir} />
     </div>
   );
 }
 
-function GrabacionesList({ loading, items }) {
+function GrabacionesList({ loading, items, onOpen }) {
   if (items === null) return null;
   if (loading) return <p className="text-sm text-ink-500">Cargando grabaciones…</p>;
   if (!items?.length) {
@@ -211,9 +214,9 @@ function GrabacionesList({ loading, items }) {
                 {r.file_size ? ` · ${(r.file_size / 1048576).toFixed(1)} MB` : ''}
               </p>
             </div>
-            <a href={r.play_url} target="_blank" rel="noreferrer" className="btn-outline text-sm shrink-0">
+            <button onClick={(e) => onOpen(e, r.play_url)} className="btn-outline text-sm shrink-0">
               <Play size={14} /> Ver
-            </a>
+            </button>
           </div>
         ))}
       </div>
