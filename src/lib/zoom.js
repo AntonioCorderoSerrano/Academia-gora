@@ -39,16 +39,71 @@ export async function zoomFetch(path, options = {}) {
   const res = await fetch(`https://api.zoom.us/v2${path}`, {
     ...options,
     headers: {
+      ...(options.headers || {}),
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
-      ...(options.headers || {}),
     },
   });
-  const text = await res.text();
-  let data = {};
-  try { data = text ? JSON.parse(text) : {}; } catch { data = { raw: text }; }
   if (!res.ok) {
-    throw new Error(data.message || `Zoom API error ${res.status}`);
+    const text = await res.text();
+    throw new Error(`Zoom API ${res.status}: ${text}`);
   }
-  return data;
+  if (res.status === 204) return null;
+  return res.json();
+}
+
+/**
+ * Crea una reunión instantánea en Zoom para la clase.
+ * Por defecto usa el usuario definido en ZOOM_HOST_USER_EMAIL.
+ */
+export async function createZoomMeeting({ topic, agenda = '', duration = 60, startTime, password } = {}) {
+  const hostEmail = process.env.ZOOM_HOST_USER_EMAIL;
+  if (!hostEmail) throw new Error('ZOOM_HOST_USER_EMAIL no configurado');
+
+  const body = {
+    topic: topic || 'Clase en directo',
+    type: startTime ? 2 : 1, // 1 = instantánea, 2 = programada
+    agenda,
+    duration,
+    timezone: 'Europe/Madrid',
+    settings: {
+      join_before_host: false,
+      waiting_room: true,
+      approval_type: 2, // no registration
+      mute_upon_entry: true,
+      auto_recording: 'cloud',
+      host_video: true,
+      participant_video: false,
+    },
+  };
+  if (startTime) body.start_time = startTime;
+  if (password) body.password = password;
+
+  return zoomFetch(`/users/${encodeURIComponent(hostEmail)}/meetings`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+/**
+ * Obtiene las grabaciones en la nube de una reunión de Zoom.
+ * Devuelve { recording_files: [...] } con urls de reproducción.
+ */
+export async function getZoomRecordings(meetingId) {
+  if (!meetingId) throw new Error('meetingId requerido');
+  try {
+    const data = await zoomFetch(`/meetings/${meetingId}/recordings`);
+    return data;
+  } catch (err) {
+    // Si no hay grabaciones aún, Zoom devuelve 404
+    if (err.message.includes('404')) return { recording_files: [] };
+    throw err;
+  }
+}
+
+/**
+ * Elimina una reunión.
+ */
+export async function deleteZoomMeeting(meetingId) {
+  return zoomFetch(`/meetings/${meetingId}`, { method: 'DELETE' });
 }
