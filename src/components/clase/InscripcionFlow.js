@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ref, onValue } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import { useAuth, ROLES } from '@/context/AuthContext';
 import {
-  TIPO_CLASE, MODALIDAD_REGULAR, cupoRestante, tieneCupo,
+  TIPO_CLASE, MODALIDAD_REGULAR, cupoRestante, tieneCupo, hijosNoInscritos,
 } from '@/lib/claseHelpers';
 import { getStripe } from '@/lib/stripeClient';
 import toast from 'react-hot-toast';
@@ -14,39 +14,47 @@ import Link from 'next/link';
 
 export default function InscripcionFlow({ clase, onClose }) {
   const { user, profile } = useAuth();
-  const [hijos, setHijos] = useState([]);
+  const [hijosTodos, setHijosTodos] = useState([]);
   const [hijoId, setHijoId] = useState('');
   const [sedeId, setSedeId] = useState('');
   const [opcionId, setOpcionId] = useState('');
   const [conComedor, setConComedor] = useState(false);
-  const [cantidad, setCantidad] = useState(1); // para privadas
+  const [cantidad, setCantidad] = useState(1);
   const [loading, setLoading] = useState(false);
 
   const esTutor = profile.role === ROLES.TUTOR;
 
-  // Cargar hijos del tutor
   useEffect(() => {
     if (!esTutor || !user) return;
     const unsub = onValue(ref(db, `hijos/${user.uid}`), (snap) => {
       const data = snap.val() || {};
-      const list = Object.entries(data).map(([id, h]) => ({ id, ...h }));
-      setHijos(list);
-      if (list.length && !hijoId) setHijoId(list[0].id);
+      setHijosTodos(Object.entries(data).map(([id, h]) => ({ id, ...h })));
     });
     return () => unsub();
   }, [esTutor, user]);
 
-  // Preseleccionar primera sede con cupo
+  // Filtrar hijos que AÚN NO están inscritos
+  const hijosDisponibles = useMemo(() => {
+    if (!esTutor) return [];
+    return hijosNoInscritos(clase, hijosTodos, user.uid);
+  }, [hijosTodos, clase, user, esTutor]);
+
+  // Si el hijo seleccionado ya no está disponible, cambiar al primero
+  useEffect(() => {
+    if (esTutor && hijosDisponibles.length > 0) {
+      if (!hijoId || !hijosDisponibles.some((h) => h.id === hijoId)) {
+        setHijoId(hijosDisponibles[0].id);
+      }
+    }
+  }, [hijosDisponibles, hijoId, esTutor]);
+
   useEffect(() => {
     if (clase.tipo === TIPO_CLASE.CAMPAMENTO && !sedeId) {
-      const primera = Object.entries(clase.sedes || {}).find(
-        ([id]) => tieneCupo(clase, id)
-      );
+      const primera = Object.entries(clase.sedes || {}).find(([id]) => tieneCupo(clase, id));
       if (primera) setSedeId(primera[0]);
     }
   }, [clase, sedeId]);
 
-  // Preseleccionar primera opción del campamento
   useEffect(() => {
     if (clase.tipo === TIPO_CLASE.CAMPAMENTO && !opcionId) {
       const primera = Object.keys(clase.opciones || {})[0];
@@ -54,14 +62,10 @@ export default function InscripcionFlow({ clase, onClose }) {
     }
   }, [clase, opcionId]);
 
-  const hijoSeleccionado = hijos.find((h) => h.id === hijoId);
+  const hijoSeleccionado = hijosDisponibles.find((h) => h.id === hijoId);
 
   const handleInscribirse = async () => {
-    // Validaciones
-    if (esTutor && !hijoId) {
-      toast.error('Selecciona un hijo para inscribir');
-      return;
-    }
+    if (esTutor && !hijoId) { toast.error('Selecciona un hijo para inscribir'); return; }
     if (clase.tipo === TIPO_CLASE.CAMPAMENTO) {
       if (!sedeId) return toast.error('Selecciona una sede');
       if (!opcionId) return toast.error('Selecciona una opción');
@@ -80,32 +84,21 @@ export default function InscripcionFlow({ clase, onClose }) {
       let body = {};
 
       if (clase.tipo === TIPO_CLASE.REGULAR) {
-        if (clase.modalidad === MODALIDAD_REGULAR.ACADEMICA) {
-          endpoint = '/api/stripe/checkout-academica';
-        } else {
-          endpoint = '/api/stripe/checkout-duracion';
-        }
+        endpoint = clase.modalidad === MODALIDAD_REGULAR.ACADEMICA
+          ? '/api/stripe/checkout-academica'
+          : '/api/stripe/checkout-duracion';
         body = { claseId: clase.id, hijoId: hijoId || null };
       } else if (clase.tipo === TIPO_CLASE.PRIVADA) {
         endpoint = '/api/stripe/checkout-privada';
         body = { claseId: clase.id, cantidad: Number(cantidad), hijoId: hijoId || null };
       } else if (clase.tipo === TIPO_CLASE.CAMPAMENTO) {
         endpoint = '/api/stripe/checkout-campamento';
-        body = {
-          claseId: clase.id,
-          sedeId,
-          opcionId,
-          conComedor,
-          hijoId: hijoId || null,
-        };
+        body = { claseId: clase.id, sedeId, opcionId, conComedor, hijoId: hijoId || null };
       }
 
       const res = await fetch(endpoint, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${idToken}`,
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
         body: JSON.stringify(body),
       });
       const data = await res.json();
@@ -115,13 +108,11 @@ export default function InscripcionFlow({ clase, onClose }) {
       await stripe.redirectToCheckout({ sessionId: data.sessionId });
     } catch (err) {
       toast.error(err.message);
-      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Calcular precio total para mostrar
   const calcTotal = () => {
     if (clase.tipo === TIPO_CLASE.REGULAR) {
       if (clase.modalidad === MODALIDAD_REGULAR.ACADEMICA) {
@@ -143,32 +134,34 @@ export default function InscripcionFlow({ clase, onClose }) {
     return '';
   };
 
+  const todosYaInscritos = esTutor && hijosTodos.length > 0 && hijosDisponibles.length === 0;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4">
-      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg max-h-[90vh] overflow-y-auto shadow-elegant">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4 animate-fade-in">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg max-h-[90vh] overflow-y-auto shadow-elegant animate-slide-up sm:animate-pop">
         <div className="sticky top-0 bg-white border-b border-ink-100 p-4 flex items-center justify-between">
           <h2 className="font-display text-xl">Completar inscripción</h2>
           <button onClick={onClose} className="btn-ghost" aria-label="Cerrar"><X size={18} /></button>
         </div>
 
         <div className="p-4 sm:p-6 space-y-5">
-          {/* Selector de hijo (solo tutor) */}
           {esTutor && (
             <SelectorHijo
-              hijos={hijos}
+              hijos={hijosDisponibles}
               hijoId={hijoId}
               onChange={setHijoId}
               hijoSeleccionado={hijoSeleccionado}
+              noHayHijos={hijosTodos.length === 0}
+              todosYaInscritos={todosYaInscritos}
             />
           )}
 
-          {/* Campamento: sede + opción + comedor */}
           {clase.tipo === TIPO_CLASE.CAMPAMENTO && (
             <>
               <SelectorSede clase={clase} sedeId={sedeId} onChange={setSedeId} />
               <SelectorOpcion clase={clase} opcionId={opcionId} onChange={setOpcionId} />
               {clase.comedorDisponible && (
-                <label className="flex items-start gap-2 cursor-pointer p-3 rounded-lg border border-ink-200 hover:border-ink-400">
+                <label className="flex items-start gap-2 cursor-pointer p-3 rounded-lg border border-ink-200 hover:border-ink-400 transition">
                   <input type="checkbox" checked={conComedor} onChange={(e) => setConComedor(e.target.checked)} className="mt-0.5" />
                   <div>
                     <p className="text-sm font-medium">Incluir servicio de comedor</p>
@@ -179,7 +172,6 @@ export default function InscripcionFlow({ clase, onClose }) {
             </>
           )}
 
-          {/* Privada: cantidad */}
           {clase.tipo === TIPO_CLASE.PRIVADA && (
             <div>
               <label className="text-sm text-ink-700">
@@ -191,20 +183,20 @@ export default function InscripcionFlow({ clase, onClose }) {
             </div>
           )}
 
-          {/* Resumen de precio */}
-          <div className="p-4 rounded-lg bg-ink-50 border border-ink-100">
-            <p className="text-xs uppercase tracking-wider text-ink-500">Total</p>
-            <p className="font-display text-lg mt-1">{calcTotal()}</p>
-            {clase.tipo === TIPO_CLASE.REGULAR && (
-              <p className="text-xs text-ink-500 mt-2">
-                Se creará una suscripción que se cancelará automáticamente al finalizar.
-                Puedes gestionar la cancelación desde tu panel de pagos.
-              </p>
-            )}
-          </div>
+          {!todosYaInscritos && (
+            <div className="p-4 rounded-lg bg-ink-50 border border-ink-100">
+              <p className="text-xs uppercase tracking-wider text-ink-500">Total</p>
+              <p className="font-display text-lg mt-1">{calcTotal()}</p>
+              {clase.tipo === TIPO_CLASE.REGULAR && (
+                <p className="text-xs text-ink-500 mt-2">
+                  Se creará una suscripción que se cancelará automáticamente al finalizar.
+                </p>
+              )}
+            </div>
+          )}
 
           <button
-            disabled={loading || (esTutor && hijos.length === 0)}
+            disabled={loading || (esTutor && hijosDisponibles.length === 0)}
             onClick={handleInscribirse}
             className="btn-accent w-full">
             {loading ? (
@@ -212,15 +204,22 @@ export default function InscripcionFlow({ clase, onClose }) {
             ) : 'Pagar e inscribir'}
           </button>
 
-          {esTutor && hijos.length === 0 && (
+          {esTutor && hijosTodos.length === 0 && (
             <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-sm flex items-start gap-2">
               <AlertCircle size={16} className="shrink-0 mt-0.5" />
               <div>
                 Primero añade a tu hijo/a en{' '}
-                <Link href="/dashboard/hijos" className="underline font-medium">
-                  Mis hijos
-                </Link>{' '}
-                para poder inscribirlo.
+                <Link href="/dashboard/hijos" className="underline font-medium">Mis hijos</Link>.
+              </div>
+            </div>
+          )}
+
+          {todosYaInscritos && (
+            <div className="p-3 rounded-lg bg-green-50 border border-green-200 text-green-900 text-sm flex items-start gap-2">
+              <AlertCircle size={16} className="shrink-0 mt-0.5" />
+              <div>
+                Todos tus hijos ya están inscritos en esta clase. Añade un nuevo perfil en{' '}
+                <Link href="/dashboard/hijos" className="underline font-medium">Mis hijos</Link> si quieres inscribir a otro.
               </div>
             </div>
           )}
@@ -230,12 +229,14 @@ export default function InscripcionFlow({ clase, onClose }) {
   );
 }
 
-function SelectorHijo({ hijos, hijoId, onChange, hijoSeleccionado }) {
+function SelectorHijo({ hijos, hijoId, onChange, noHayHijos, todosYaInscritos }) {
   return (
     <div>
       <label className="text-sm text-ink-700">¿Para quién es la inscripción?</label>
-      {hijos.length === 0 ? (
+      {noHayHijos ? (
         <p className="text-xs text-ink-500 mt-1">No tienes perfiles de hijos creados.</p>
+      ) : todosYaInscritos ? (
+        <p className="text-xs text-ink-500 mt-1">Todos tus hijos ya están inscritos.</p>
       ) : (
         <div className="mt-2 space-y-2">
           {hijos.map((h) => (

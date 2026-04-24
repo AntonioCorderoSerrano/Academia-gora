@@ -7,11 +7,10 @@ import {
   createUserWithEmailAndPassword,
   signOut as fbSignOut,
   updateProfile,
-  sendEmailVerification,
-  reload,
+  updatePassword as fbUpdatePassword,
 } from 'firebase/auth';
 import {
-  ref, get, set, serverTimestamp, onValue, onDisconnect, remove,
+  ref, get, set, update, serverTimestamp, onValue, onDisconnect, remove,
 } from 'firebase/database';
 import { auth, db } from '@/lib/firebase';
 
@@ -28,22 +27,21 @@ export const ROLES = {
 export const SESSION_STATE = {
   LOADING: 'loading',
   UNAUTH: 'unauth',
-  UNVERIFIED: 'unverified',
+  PENDING: 'pending',   // cuenta creada, pendiente de aprobación admin
   ACTIVE: 'active',
-  KICKED: 'kicked', // sesión cerrada porque se abrió otra
+  KICKED: 'kicked',
 };
 
-function buildActionSettings() {
-  const base =
-    (typeof window !== 'undefined' && window.location?.origin) ||
-    process.env.NEXT_PUBLIC_APP_URL;
-  if (!base) return undefined;
-  return { url: `${base}/login`, handleCodeInApp: false };
-}
+// Roles que requieren aprobación admin
+const ROLES_APROBACION = [ROLES.ADMIN, ROLES.MAESTRO];
 
-// Generar un token único por pestaña
 function newSessionToken() {
   return `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+}
+
+// Genera un código de 6 dígitos único para alumnos (método vinculación hijo↔cuenta)
+function generarCodigoAlumno() {
+  return String(Math.floor(100000 + Math.random() * 900000));
 }
 
 export function AuthProvider({ children }) {
@@ -52,33 +50,48 @@ export function AuthProvider({ children }) {
   const [status, setStatus] = useState(SESSION_STATE.LOADING);
   const [sessionToken, setSessionToken] = useState(null);
 
-  // Listener de sesión única
+  // Sesión única
   useEffect(() => {
-    if (!user || !sessionToken) return;
+    if (!user || !sessionToken || status !== SESSION_STATE.ACTIVE) return;
     const sesRef = ref(db, `sesiones/${user.uid}`);
-
-    // Marcar nuestra sesión como activa
     set(sesRef, {
       token: sessionToken,
       lastActive: serverTimestamp(),
       userAgent: typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 100) : '',
     });
-
-    // Limpiar al desconectar
     onDisconnect(sesRef).remove();
-
-    // Escuchar cambios: si el token cambia, otra pestaña tomó control
     const unsub = onValue(sesRef, (snap) => {
       const data = snap.val();
       if (data && data.token && data.token !== sessionToken) {
-        // Otra sesión nos echó
         setStatus(SESSION_STATE.KICKED);
         fbSignOut(auth).catch(() => {});
       }
     });
-
     return () => unsub();
-  }, [user, sessionToken]);
+  }, [user, sessionToken, status]);
+
+  // Listener del perfil en vivo: para detectar cuando admin aprueba
+  useEffect(() => {
+    if (!user) return;
+    const unsub = onValue(ref(db, `usuarios/${user.uid}`), (snap) => {
+      const data = snap.exists() ? snap.val() : null;
+      setProfile(data);
+
+      if (!data) return;
+      // Si el rol requiere aprobación y no está aprobado → PENDING
+      if (ROLES_APROBACION.includes(data.role) && !data.approved) {
+        setStatus(SESSION_STATE.PENDING);
+        return;
+      }
+      // Si pasa de PENDING a aprobado, activar sesión
+      if (status !== SESSION_STATE.ACTIVE && status !== SESSION_STATE.KICKED) {
+        const token = newSessionToken();
+        setSessionToken(token);
+        setStatus(SESSION_STATE.ACTIVE);
+      }
+    });
+    return () => unsub();
+  }, [user]);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (fbUser) => {
@@ -86,41 +99,25 @@ export function AuthProvider({ children }) {
         setUser(null);
         setProfile(null);
         setSessionToken(null);
-        setStatus((prev) => prev === SESSION_STATE.KICKED ? SESSION_STATE.KICKED : SESSION_STATE.UNAUTH);
+        setStatus((prev) =>
+          prev === SESSION_STATE.KICKED ? SESSION_STATE.KICKED : SESSION_STATE.UNAUTH
+        );
         return;
       }
-      try { await reload(fbUser); } catch {}
-
       setUser(fbUser);
-      let data = null;
-      try {
-        const snap = await get(ref(db, `usuarios/${fbUser.uid}`));
-        data = snap.exists() ? snap.val() : null;
-      } catch {}
-      setProfile(data);
-
-      if (!fbUser.emailVerified) {
-        setStatus(SESSION_STATE.UNVERIFIED);
-        return;
-      }
-
-      // Generar token y marcar sesión activa (esto echará a otras sesiones)
-      const token = newSessionToken();
-      setSessionToken(token);
-      setStatus(SESSION_STATE.ACTIVE);
+      // El listener del perfil arriba determinará estado final (ACTIVE/PENDING)
     });
     return () => unsub();
   }, []);
 
-  const login = async (email, password) => {
-    const cred = await signInWithEmailAndPassword(auth, email, password);
-    await reload(cred.user);
-    return cred;
-  };
+  const login = async (email, password) =>
+    signInWithEmailAndPassword(auth, email, password);
 
-  const register = async ({ email, password, nombre, role = ROLES.ALUMNO, telefono = '' }) => {
+  const register = async ({ email, password, nombre, role = ROLES.ALUMNO, telefono = '', locale = 'es' }) => {
     const cred = await createUserWithEmailAndPassword(auth, email, password);
-    await updateProfile(cred.user, { displayName: nombre });
+    try { await updateProfile(cred.user, { displayName: nombre }); } catch {}
+
+    const necesitaAprobacion = ROLES_APROBACION.includes(role);
 
     const userData = {
       uid: cred.user.uid,
@@ -129,47 +126,32 @@ export function AuthProvider({ children }) {
       telefono,
       role,
       sinCobro: role === ROLES.MAESTRO,
-      // Sin verificación admin: aprobado de entrada
-      approved: true,
-      approvedAt: serverTimestamp(),
+      approved: !necesitaAprobacion,
+      approvedAt: necesitaAprobacion ? null : serverTimestamp(),
       createdAt: serverTimestamp(),
       suscripcionActiva: false,
       stripeCustomerId: null,
+      locale,
     };
+
+    // Código único para alumnos (vinculación segura con perfil de hijo)
+    if (role === ROLES.ALUMNO) {
+      userData.codigoAlumno = generarCodigoAlumno();
+    }
+
     await set(ref(db, `usuarios/${cred.user.uid}`), userData);
-    setProfile(userData);
 
-    try {
-      await sendEmailVerification(cred.user, buildActionSettings());
-    } catch (e) {
-      console.warn('No se pudo enviar email de verificación:', e);
+    // Si requiere aprobación, registro se cierra hasta que admin apruebe
+    if (necesitaAprobacion) {
+      await fbSignOut(auth);
     }
 
-    return cred;
+    return { cred, necesitaAprobacion };
   };
 
-  const resendVerification = async () => {
-    if (!auth.currentUser) throw new Error('Sin sesión');
-    await reload(auth.currentUser);
-    if (auth.currentUser.emailVerified) { await refreshStatus(); return; }
-    await sendEmailVerification(auth.currentUser, buildActionSettings());
-  };
-
-  const refreshStatus = async () => {
-    if (!auth.currentUser) return;
-    await reload(auth.currentUser);
-    let data = null;
-    try {
-      const snap = await get(ref(db, `usuarios/${auth.currentUser.uid}`));
-      data = snap.exists() ? snap.val() : null;
-    } catch {}
-    setProfile(data);
-    if (!auth.currentUser.emailVerified) setStatus(SESSION_STATE.UNVERIFIED);
-    else {
-      const token = newSessionToken();
-      setSessionToken(token);
-      setStatus(SESSION_STATE.ACTIVE);
-    }
+  const updatePassword = async (nuevaPassword) => {
+    if (!auth.currentUser) throw new Error('No hay sesión');
+    await fbUpdatePassword(auth.currentUser, nuevaPassword);
   };
 
   const logout = async () => {
@@ -182,14 +164,11 @@ export function AuthProvider({ children }) {
   const hasRole = (...roles) => profile && roles.includes(profile.role);
 
   return (
-    <AuthContext.Provider
-      value={{
-        user, profile, status,
-        loading: status === SESSION_STATE.LOADING,
-        login, register, logout, hasRole,
-        resendVerification, refreshStatus,
-      }}
-    >
+    <AuthContext.Provider value={{
+      user, profile, status,
+      loading: status === SESSION_STATE.LOADING,
+      login, register, logout, hasRole, updatePassword,
+    }}>
       {children}
     </AuthContext.Provider>
   );

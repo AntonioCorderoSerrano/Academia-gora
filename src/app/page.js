@@ -1,179 +1,75 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useAuth, SESSION_STATE } from '@/context/AuthContext';
 import Logo from '@/components/Logo';
-import toast from 'react-hot-toast';
-import { MailCheck, Clock, RefreshCw, Eye, EyeOff } from 'lucide-react';
-import FooterLegal from '@/components/footer';
+import { ArrowUpRight, GraduationCap, Users, CalendarCheck, Wallet } from 'lucide-react';
 
-export default function LoginPage() {
-  const { login, logout, status, resendVerification, refreshStatus } = useAuth();
-  const router = useRouter();
-  const [form, setForm] = useState({ email: '', password: '' });
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (status === SESSION_STATE.ACTIVE) router.push('/dashboard');
-  }, [status, router]);
-
-  const onSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      await login(form.email, form.password);
-    } catch (err) {
-      toast.error(
-        err.code === 'auth/too-many-requests'
-          ? 'Demasiados intentos. Espera un momento.'
-          : 'Credenciales inválidas'
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (status === SESSION_STATE.UNVERIFIED) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <div className="flex-1 flex items-center justify-center px-4 sm:px-6 py-6 sm:py-12">
-          <div className="card p-5 sm:p-8 md:p-10 max-w-md w-full text-center">
-            <Logo size="sm" href={null} className="mx-auto mb-5 sm:mb-6" />
-            <div className="mx-auto h-11 w-11 sm:h-14 sm:w-14 rounded-full bg-accent/15 flex items-center justify-center">
-              <MailCheck size={20} className="text-accent-deep sm:w-[22px] sm:h-[22px]" strokeWidth={1.5} />
-            </div>
-            <h1 className="font-display text-xl sm:text-2xl md:text-3xl mt-3 sm:mt-5">Verifica tu correo</h1>
-            <p className="text-ink-600 mt-2 text-sm sm:text-base">
-              Hemos enviado un enlace a tu email. Ábrelo para confirmar la cuenta. Revisa la carpeta de spam si no lo ves.
-            </p>
-            <div className="mt-5 sm:mt-6 flex flex-col gap-2">
-              <button onClick={async () => {
-                try { await resendVerification(); toast.success('Correo reenviado'); }
-                catch { toast.error('Espera un momento antes de reintentar'); }
-              }} className="btn-accent">
-                Reenviar correo
-              </button>
-              <button onClick={() => refreshStatus()} className="btn-outline">
-                <RefreshCw size={16} /> Ya lo confirmé
-              </button>
-              <button onClick={() => logout()} className="btn-ghost">
-                Cerrar sesión
-              </button>
-            </div>
-          </div>
-        </div>
-        <FooterLegal />
-      </div>
-    );
-  }
-
-  if (status === SESSION_STATE.PENDING) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <div className="flex-1 flex items-center justify-center px-4 sm:px-6 py-6 sm:py-12">
-          <div className="card p-5 sm:p-8 md:p-10 max-w-md w-full text-center">
-            <Logo size="sm" href={null} className="mx-auto mb-5 sm:mb-6" />
-            <div className="mx-auto h-11 w-11 sm:h-14 sm:w-14 rounded-full bg-accent/15 flex items-center justify-center">
-              <Clock size={20} className="text-accent-deep sm:w-[22px] sm:h-[22px]" strokeWidth={1.5} />
-            </div>
-            <h1 className="font-display text-xl sm:text-2xl md:text-3xl mt-3 sm:mt-5">Cuenta pendiente</h1>
-            <p className="text-ink-600 mt-2 text-sm sm:text-base">
-              Un administrador debe validar tu cuenta antes de que puedas acceder. Te avisaremos por correo cuando esté lista.
-            </p>
-            <div className="mt-5 sm:mt-6 flex flex-col gap-2">
-              <button onClick={() => refreshStatus()} className="btn-outline">
-                <RefreshCw size={16} /> Volver a comprobar
-              </button>
-              <button onClick={() => logout()} className="btn-ghost">
-                Cerrar sesión
-              </button>
-            </div>
-          </div>
-        </div>
-        <FooterLegal />
-      </div>
-    );
-  }
-
+export default function HomePage() {
   return (
-    <div className="h-screen flex">
-      {/* Panel oscuro - desktop y tablet horizontal */}
-      <aside className="hidden md:flex flex-col bg-ink-900 text-ink-50 p-6 md:p-8 lg:p-12 relative overflow-hidden w-1/2">
-        {/* Logo en la parte superior */}
-        <div className="flex-shrink-0">
-          <Logo size="md" href="/" variant="light" />
-        </div>
-        
-        {/* Contenido centrado verticalmente */}
-        <div className="flex-1 flex flex-col justify-center -mt-16">
-          <h2 className="font-display text-3xl md:text-4xl lg:text-5xl leading-tight">
-            Bienvenido/a<br />
-            <em className="text-accent-soft font-normal italic">de vuelta.</em>
-          </h2>
-          <p className="mt-3 md:mt-4 text-ink-300 max-w-sm text-sm md:text-base">
-            Accede para continuar con tus clases y comunicarte con tu comunidad.
-          </p>
-        </div>
-        
-        <div className="absolute -right-20 -bottom-20 h-60 md:h-80 w-60 md:w-80 rounded-full bg-accent-deep/30 blur-3xl pointer-events-none" />
-      </aside>
+    <main className="relative min-h-screen">
+      <header className="mx-auto flex max-w-6xl items-center justify-between px-4 sm:px-6 py-3 sm:py-5 gap-2 animate-fade-in">
+        <Logo size="sm" className="sm:hidden" />
+        <Logo size="md" className="hidden sm:inline-flex" />
+        <nav className="flex items-center gap-1 sm:gap-2 md:gap-3 text-sm">
+          <Link href="/login" className="btn-ghost px-2.5 sm:px-4 py-2">Entrar</Link>
+          <Link href="/register" className="btn-primary px-3 sm:px-5 py-2 sm:py-2.5">
+            <span className="hidden xs:inline sm:inline">Crear cuenta</span>
+            <span className="xs:hidden sm:hidden">Registro</span>
+            <ArrowUpRight size={16} className="hidden sm:inline" />
+          </Link>
+        </nav>
+      </header>
 
-      {/* Lado derecho con formulario y footer */}
-      <section className="flex-1 flex flex-col md:w-1/2">
-        <div className="flex-1 flex items-center justify-center">
-          <form onSubmit={onSubmit} className="w-full max-w-sm px-4 sm:px-6">
-            <Logo size="md" className="md:hidden mb-6" />
-            <h1 className="font-display text-2xl sm:text-3xl md:text-4xl">Iniciar sesión</h1>
-            <p className="mt-1 sm:mt-2 text-ink-600 text-sm sm:text-base">Introduce tus credenciales.</p>
-
-            <div className="mt-6 sm:mt-8 space-y-4">
-              <div>
-                <label className="text-sm text-ink-700">Correo electrónico</label>
-                <input type="email" required className="field mt-1"
-                  autoComplete="email" inputMode="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })} />
-              </div>
-              <div>
-                <label className="text-sm text-ink-700">Contraseña</label>
-                <div className="relative mt-1">
-                  <input 
-                    type={showPassword ? 'text' : 'password'} 
-                    required 
-                    className="field w-full pr-10"
-                    autoComplete="current-password"
-                    value={form.password}
-                    onChange={(e) => setForm({ ...form, password: e.target.value })} 
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-500 hover:text-ink-700 transition-colors"
-                  >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <button disabled={loading} className="btn-primary w-full mt-6">
-              {loading ? 'Entrando…' : 'Entrar'}
-            </button>
-
-            <p className="mt-6 text-sm text-ink-600 text-center md:text-left">
-              ¿No tienes cuenta?{' '}
-              <Link href="/register" className="text-accent-deep underline-offset-2 hover:underline">
-                Crear una
-              </Link>
+      <section className="mx-auto max-w-6xl px-4 sm:px-6 pt-6 sm:pt-10 pb-16 sm:pb-24 md:pt-16 md:pb-32">
+        <div className="grid md:grid-cols-12 gap-6 md:gap-12 items-end">
+          <div className="md:col-span-8">
+            <span className="chip bg-ink-900 text-accent-soft uppercase tracking-widest text-[9px] sm:text-[10px] md:text-xs animate-fade-up" style={{ animationDelay: '100ms' }}>
+              Plataforma educativa
+            </span>
+            <h1 className="mt-4 sm:mt-5 md:mt-6 font-display text-[2rem] xs:text-4xl sm:text-5xl md:text-6xl lg:text-7xl leading-[1] md:leading-[0.95] tracking-tight animate-fade-up" style={{ animationDelay: '180ms' }}>
+              Enseñar, aprender y<br/>
+              <em className="text-accent-deep not-italic font-normal italic">administrar</em>
+              <span className="text-ink-400"> — </span>
+              en un mismo lugar.
+            </h1>
+            <p className="mt-4 sm:mt-6 max-w-xl text-ink-600 text-sm sm:text-base md:text-lg leading-relaxed animate-fade-up" style={{ animationDelay: '280ms' }}>
+              Skolium es una plataforma integral para academias: clases, alumnos, asistencia,
+              calendario, pagos, clases en directo y comunicación con elegancia.
             </p>
-          </form>
+            <div className="mt-5 sm:mt-8 flex flex-wrap gap-2 sm:gap-3 animate-fade-up" style={{ animationDelay: '380ms' }}>
+              <Link href="/register" className="btn-accent flex-1 xs:flex-initial">Empezar ahora</Link>
+              <Link href="/login" className="btn-outline flex-1 xs:flex-initial">Ya tengo cuenta</Link>
+            </div>
+          </div>
+
+          <div className="md:col-span-4 md:pl-8 md:border-l border-ink-200 hidden md:block animate-fade-up" style={{ animationDelay: '480ms' }}>
+            <p className="font-display italic text-ink-500 text-base lg:text-lg leading-snug">
+              "Una herramienta hecha para quienes se toman la enseñanza en serio."
+            </p>
+          </div>
         </div>
-        
-        <FooterLegal />
+
+        <div className="mt-12 sm:mt-16 md:mt-24 grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4 md:gap-6">
+          {[
+            { icon: GraduationCap, title: '4 roles', desc: 'Admin, docente, alumno, tutor' },
+            { icon: Users, title: 'Clases', desc: 'Inscripciones y mensajería' },
+            { icon: CalendarCheck, title: 'Asistencia', desc: 'Registro y calendario' },
+            { icon: Wallet, title: 'Pagos Stripe', desc: 'Suscripción + único' },
+          ].map((f, i) => (
+            <div key={i} className="card p-3 sm:p-5 md:p-6 animate-fade-up"
+              style={{ animationDelay: `${580 + i * 80}ms` }}>
+              <f.icon size={22} className="text-accent-deep sm:w-7 sm:h-7" strokeWidth={1.5} />
+              <h3 className="mt-2 sm:mt-4 font-display text-base sm:text-lg md:text-xl">{f.title}</h3>
+              <p className="mt-0.5 sm:mt-1 text-[11px] sm:text-xs md:text-sm text-ink-600 leading-snug">{f.desc}</p>
+            </div>
+          ))}
+        </div>
       </section>
-    </div>
+
+      <footer className="mx-auto max-w-6xl px-4 sm:px-6 pb-6 sm:pb-10 text-[11px] sm:text-sm text-ink-500 flex flex-col sm:flex-row justify-between gap-1 sm:gap-2">
+        <span>© {new Date().getFullYear()} Skolium</span>
+        <span className="font-display italic">fecit cum amore</span>
+      </footer>
+    </main>
   );
 }

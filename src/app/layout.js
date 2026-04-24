@@ -1,5 +1,7 @@
 import './globals.css';
 import { AuthProvider } from '@/context/AuthContext';
+import { LocaleProvider } from '@/context/LocaleContext';
+import { ConfirmProvider } from '@/context/ConfirmContext';
 import { Toaster } from 'react-hot-toast';
 
 export const metadata = {
@@ -19,13 +21,13 @@ export default function RootLayout({ children }) {
     <html lang="es">
       <body className="bg-paper min-h-screen antialiased">
         <AuthProvider>
-          {children}
-          <Toaster
-            position="top-right"
-            toastOptions={{
-              style: { background: '#1c1b18', color: '#f6f6f5', fontSize: 14 },
-            }}
-          />
+          <LocaleProvider>
+            <ConfirmProvider>
+              {children}
+              <Toaster position="top-right"
+                toastOptions={{ style: { background: '#1c1b18', color: '#f6f6f5', fontSize: 14 } }} />
+            </ConfirmProvider>
+          </LocaleProvider>
         </AuthProvider>
       </body>
     </html>

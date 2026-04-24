@@ -10,19 +10,15 @@ export async function POST(req) {
     const { claseId, hijoId } = await req.json();
     if (!claseId) return NextResponse.json({ error: 'Falta claseId' }, { status: 400 });
 
-    const { uid, userData, clase, customerId } = await preparePagoContext(req, { claseId });
-
+    const { uid, clase, inscripciones, customerId } = await preparePagoContext(req, { claseId });
     if (clase.tipo !== 'regular' || clase.modalidad !== 'academica') {
-      return NextResponse.json({ error: 'Tipo de clase no válido para esta acción' }, { status: 400 });
+      return NextResponse.json({ error: 'Tipo de clase no válido' }, { status: 400 });
     }
-
-    validarCupo(clase);
+    validarCupo(clase, inscripciones);
 
     const cuotasRestantes = calcularCuotasAcademicas(new Date());
-    const precioMensual = Math.round(Number(clase.precioMensual) * 100);
+    const precio = Math.round(Number(clase.precio_mensual) * 100);
 
-    // Usamos Checkout en modo subscription; el webhook se encargará de
-    // programar la cancelación para junio (con Subscription Schedule).
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       customer: customerId,
@@ -30,33 +26,26 @@ export async function POST(req) {
         price_data: {
           currency: 'eur',
           recurring: { interval: 'month' },
-          product_data: {
-            name: `${clase.nombre} — Curso académico`,
-          },
-          unit_amount: precioMensual,
+          product_data: { name: `${clase.nombre} — Curso académico` },
+          unit_amount: precio,
         },
         quantity: 1,
       }],
       subscription_data: {
         metadata: {
-          uid, claseId, tipo: 'academica', hijoId: hijoId || '',
+          uid, claseId, tipo: 'academica',
+          hijoId: hijoId || '',
           cuotasRestantes: String(cuotasRestantes),
         },
       },
       success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/clases/${claseId}?status=success`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/clases/${claseId}?status=cancel`,
-      metadata: {
-        uid, claseId, hijoId: hijoId || '',
-        tipo: 'inscripcion_academica',
-      },
+      metadata: { uid, claseId, hijoId: hijoId || '', tipo: 'inscripcion_academica' },
     });
 
     return NextResponse.json({ sessionId: session.id });
   } catch (err) {
     console.error('checkout-academica:', err);
-    return NextResponse.json(
-      { error: err.message },
-      { status: err.status || 500 }
-    );
+    return NextResponse.json({ error: err.message }, { status: err.status || 500 });
   }
 }

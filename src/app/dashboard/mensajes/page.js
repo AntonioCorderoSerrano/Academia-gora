@@ -6,12 +6,11 @@ import { useRouter } from 'next/navigation';
 import { ref, onValue, get } from 'firebase/database';
 import { db } from '@/lib/firebase';
 import { useAuth, ROLES } from '@/context/AuthContext';
-import { MessageSquare, Users, Plus, Search, X, UserCircle } from 'lucide-react';
+import { Users, Plus, Search, X, UserCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function MensajesPage() {
   const { user, profile } = useAuth();
-  const router = useRouter();
   const [clases, setClases] = useState([]);
   const [chats, setChats] = useState([]);
   const [showNuevo, setShowNuevo] = useState(false);
@@ -43,7 +42,7 @@ export default function MensajesPage() {
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 animate-fade-up">
         <div>
           <h1 className="font-display text-3xl sm:text-4xl">Mensajes</h1>
           <p className="text-ink-600 text-sm sm:text-base mt-1">
@@ -55,18 +54,18 @@ export default function MensajesPage() {
         </button>
       </div>
 
-      {/* Chats privados */}
       {chats.length > 0 && (
-        <section className="mb-6">
+        <section className="mb-6 animate-fade-up" style={{ animationDelay: '80ms' }}>
           <h2 className="font-display text-xl mb-3">Conversaciones privadas</h2>
           <div className="card divide-y divide-ink-100">
-            {chats.map((c) => {
+            {chats.map((c, i) => {
               const otroUid = Object.keys(c.participantes || {}).find((u) => u !== user.uid);
               const otroNombre = c.nombres?.[otroUid] || 'Usuario';
               const otroRol = c.roles?.[otroUid] || '';
               return (
                 <Link key={c.id} href={`/dashboard/mensajes/${c.id}`}
-                  className="p-3 sm:p-4 flex items-center gap-3 sm:gap-4 hover:bg-ink-50/60 transition">
+                  className="p-3 sm:p-4 flex items-center gap-3 sm:gap-4 hover:bg-ink-50/60 transition animate-fade-up"
+                  style={{ animationDelay: `${100 + i * 40}ms` }}>
                   <div className="h-10 w-10 rounded-full bg-accent/15 flex items-center justify-center shrink-0">
                     <UserCircle size={20} className="text-accent-deep" />
                   </div>
@@ -84,8 +83,7 @@ export default function MensajesPage() {
         </section>
       )}
 
-      {/* Chats de clase */}
-      <section>
+      <section className="animate-fade-up" style={{ animationDelay: '140ms' }}>
         <h2 className="font-display text-xl mb-3">Chats de clase</h2>
         {clases.length === 0 ? (
           <div className="card p-8 sm:p-10 text-center text-ink-500 text-sm sm:text-base">
@@ -93,9 +91,10 @@ export default function MensajesPage() {
           </div>
         ) : (
           <div className="card divide-y divide-ink-100">
-            {clases.map((c) => (
+            {clases.map((c, i) => (
               <Link key={c.id} href={`/dashboard/clases/${c.id}?tab=chat`}
-                className="p-3 sm:p-4 flex items-center gap-3 sm:gap-4 hover:bg-ink-50/60 transition">
+                className="p-3 sm:p-4 flex items-center gap-3 sm:gap-4 hover:bg-ink-50/60 transition animate-fade-up"
+                style={{ animationDelay: `${180 + i * 40}ms` }}>
                 <div className="h-10 w-10 rounded-full bg-accent/15 flex items-center justify-center shrink-0">
                   <Users size={18} className="text-accent-deep" />
                 </div>
@@ -124,11 +123,6 @@ function NuevoChat({ onClose }) {
   const [resultados, setResultados] = useState([]);
   const [iniciando, setIniciando] = useState(null);
 
-  // ¿Con quién puede hablar este usuario?
-  // - Docente: con sus alumnos y con tutores de sus alumnos
-  // - Alumno: con sus docentes
-  // - Tutor: con docentes de las clases de sus hijos
-  // - Admin: con cualquiera
   const buscar = async (q) => {
     setTermino(q);
     if (!q || q.length < 2) return setResultados([]);
@@ -195,8 +189,8 @@ function NuevoChat({ onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4">
-      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg max-h-[85vh] overflow-hidden flex flex-col shadow-elegant">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4 animate-fade-in">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg max-h-[85vh] overflow-hidden flex flex-col shadow-elegant animate-slide-up sm:animate-pop">
         <div className="border-b border-ink-100 p-4 flex items-center justify-between">
           <h2 className="font-display text-xl">Nueva conversación</h2>
           <button onClick={onClose} className="btn-ghost" aria-label="Cerrar"><X size={18} /></button>
@@ -209,17 +203,18 @@ function NuevoChat({ onClose }) {
               value={termino} onChange={(e) => buscar(e.target.value)} />
           </div>
           <p className="text-xs text-ink-500 mt-2">
-            Solo aparecen personas con las que tienes vínculo (clases, hijos inscritos…).
+            Solo aparecen personas con las que tienes vínculo.
           </p>
         </div>
         <div className="flex-1 overflow-y-auto p-2">
           {resultados.length === 0 && termino.length >= 2 && (
             <p className="text-center text-sm text-ink-500 py-6">Sin resultados.</p>
           )}
-          {resultados.map((r) => (
+          {resultados.map((r, i) => (
             <button key={r.uid} onClick={() => iniciar(r.uid)}
               disabled={iniciando === r.uid}
-              className="w-full text-left p-3 rounded-lg hover:bg-ink-50 flex items-center gap-3">
+              className="w-full text-left p-3 rounded-lg hover:bg-ink-50 flex items-center gap-3 transition animate-fade-up"
+              style={{ animationDelay: `${i * 30}ms` }}>
               <UserCircle size={20} className="text-accent-deep shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-sm truncate">{r.nombre}</p>

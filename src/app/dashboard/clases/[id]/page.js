@@ -8,11 +8,11 @@ import { db } from '@/lib/firebase';
 import { useAuth, ROLES } from '@/context/AuthContext';
 import {
   TIPO_CLASE, LABEL_TIPO, MODALIDAD_REGULAR,
-  contarInscripciones, tieneCupo, cupoRestante, estaInscrito,
+  contarInscripciones, tieneCupo, puedeVerClase, hijosInscritosEn,
 } from '@/lib/claseHelpers';
 import {
   ArrowLeft, Users, FileText, CheckSquare, MessageSquare, Trash2, Video,
-  Calendar as CalIcon, Euro,
+  Calendar as CalIcon, Euro, UserPlus, UserCircle,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import TabAlumnos from '@/components/clase/TabAlumnos';
@@ -62,7 +62,7 @@ export default function ClaseDetalle() {
   }
   if (estado === 'notfound' || !clase) {
     return (
-      <div className="card p-8 sm:p-10 text-center">
+      <div className="card p-8 sm:p-10 text-center animate-fade-up">
         <p className="text-ink-700 font-display text-lg sm:text-xl">Clase no encontrada</p>
         <Link href="/dashboard/clases" className="btn-outline mt-4 inline-flex">Volver</Link>
       </div>
@@ -71,20 +71,34 @@ export default function ClaseDetalle() {
 
   const esMaestro = clase.maestroId === user.uid;
   const esAdmin = profile.role === ROLES.ADMIN;
-  const esAlumnoInscrito = !!clase.alumnos?.[user.uid];
   const puedeGestionar = esMaestro || esAdmin;
 
-  // Tutor: comprobar si tiene hijos inscritos
-  const tieneHijoInscrito = profile.role === ROLES.TUTOR && clase.alumnos
-    ? Object.values(clase.alumnos).some((a) => a.tutorUid === user.uid)
-    : false;
+  const puedeVer = puedeVerClase(clase, user, profile);
 
-  const puedeVer = puedeGestionar || esAlumnoInscrito || tieneHijoInscrito;
-  const puedeInscribirse = !puedeGestionar && !esAlumnoInscrito;
-  const hayCupo = tieneCupo(clase);
+  // ¿Hijos de este tutor en la clase?
+  const hijosEn = profile.role === ROLES.TUTOR
+    ? hijosInscritosEn(clase, user.uid)
+    : [];
 
-  // VISTA: no inscrito + puede inscribirse → pantalla de inscripción
+  // No inscrito pero puede inscribirse
+  const puedeInscribirse = !puedeGestionar && (
+    profile.role === ROLES.TUTOR ||
+    (profile.role === ROLES.ALUMNO && !clase.alumnos?.[user.uid])
+  );
+
+  // VISTA: sin acceso Y no es tutor/alumno que pueda inscribirse
+  if (!puedeVer && !puedeInscribirse) {
+    return (
+      <div className="card p-8 sm:p-10 text-center animate-fade-up">
+        <p className="text-ink-700 font-display text-lg sm:text-xl">No tienes acceso</p>
+        <Link href="/dashboard/clases" className="btn-outline mt-4 inline-flex">Volver</Link>
+      </div>
+    );
+  }
+
+  // VISTA: usuario aún no inscrito → pantalla de inscripción
   if (!puedeVer && puedeInscribirse) {
+    const hayCupo = tieneCupo(clase);
     return (
       <ClaseVistaPublica
         clase={clase}
@@ -93,15 +107,6 @@ export default function ClaseDetalle() {
         showInscripcion={showInscripcion}
         onCloseInscripcion={() => setShowInscripcion(false)}
       />
-    );
-  }
-
-  if (!puedeVer) {
-    return (
-      <div className="card p-8 sm:p-10 text-center">
-        <p className="text-ink-700 font-display text-lg sm:text-xl">No tienes acceso</p>
-        <Link href="/dashboard/clases" className="btn-outline mt-4 inline-flex">Volver</Link>
-      </div>
     );
   }
 
@@ -126,14 +131,35 @@ export default function ClaseDetalle() {
 
   return (
     <div>
-      <Link href="/dashboard/clases" className="text-sm text-ink-500 hover:text-ink-900 inline-flex items-center gap-1 mb-4 sm:mb-6">
+      <Link href="/dashboard/clases" className="text-sm text-ink-500 hover:text-ink-900 inline-flex items-center gap-1 mb-4 sm:mb-6 animate-fade-up">
         <ArrowLeft size={16} /> Volver a clases
       </Link>
 
       <CabeceraClase clase={clase} puedeGestionar={puedeGestionar} onDelete={eliminarClase} />
 
-      {/* Tabs */}
-      <div className="flex gap-1 mb-5 sm:mb-6 border-b border-ink-200 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-none">
+      {/* Banner con hijos inscritos del tutor + botón añadir otro */}
+      {profile.role === ROLES.TUTOR && hijosEn.length > 0 && (
+        <div className="card p-4 sm:p-5 mb-5 sm:mb-6 animate-fade-up bg-accent/5 border-accent/20">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs uppercase tracking-wider text-accent-deep mb-1">Tus hijos en esta clase</p>
+              <div className="flex flex-wrap gap-2">
+                {hijosEn.map((h) => (
+                  <span key={h.uid} className="inline-flex items-center gap-1.5 chip bg-white text-ink-800 border border-ink-200">
+                    <UserCircle size={12} className="text-accent-deep" />
+                    {h.nombre}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <button onClick={() => setShowInscripcion(true)} className="btn-outline text-sm shrink-0">
+              <UserPlus size={14} /> Inscribir otro hijo
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="flex gap-1 mb-5 sm:mb-6 border-b border-ink-200 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-none animate-fade-up">
         {tabsVisibles.map((t) => (
           <button key={t.id} onClick={() => cambiarTab(t.id)}
             className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 text-sm border-b-2 -mb-px whitespace-nowrap transition ${
@@ -147,29 +173,31 @@ export default function ClaseDetalle() {
         ))}
       </div>
 
-      <div>
+      <div className="animate-fade-up">
         {tab === 'alumnos' && <TabAlumnos clase={clase} puedeGestionar={puedeGestionar} />}
         {tab === 'directo' && <TabDirecto clase={clase} puedeGestionar={puedeGestionar} />}
         {tab === 'materiales' && <TabMateriales clase={clase} puedeGestionar={puedeGestionar} />}
-        {tab === 'asistencia' && <TabAsistencia clase={clase} puedeGestionar={puedeGestionar} />}
-        {tab === 'chat' && <TabChat clase={clase} />}
+        {tab === 'asistencia' && <TabAsistencia clase={clase} puedeGestionar={puedeGestionar} hijosEn={hijosEn} />}
+        {tab === 'chat' && <TabChat clase={clase} hijosEn={hijosEn} />}
       </div>
+
+      {showInscripcion && (
+        <InscripcionFlow clase={clase} onClose={() => setShowInscripcion(false)} />
+      )}
     </div>
   );
 }
 
-// Vista para usuarios NO inscritos que pueden inscribirse
 function ClaseVistaPublica({ clase, hayCupo, onInscribirse, showInscripcion, onCloseInscripcion }) {
   return (
     <div>
-      <Link href="/dashboard/clases" className="text-sm text-ink-500 hover:text-ink-900 inline-flex items-center gap-1 mb-4 sm:mb-6">
+      <Link href="/dashboard/clases" className="text-sm text-ink-500 hover:text-ink-900 inline-flex items-center gap-1 mb-4 sm:mb-6 animate-fade-up">
         <ArrowLeft size={16} /> Volver a clases
       </Link>
 
       <CabeceraClase clase={clase} puedeGestionar={false} />
 
-      {/* Info de inscripción */}
-      <div className="card p-5 sm:p-6 md:p-8">
+      <div className="card p-5 sm:p-6 md:p-8 animate-fade-up">
         <h2 className="font-display text-xl sm:text-2xl mb-3">Inscripción</h2>
         <ResumenPrecio clase={clase} />
 
@@ -191,7 +219,7 @@ function ClaseVistaPublica({ clase, hayCupo, onInscribirse, showInscripcion, onC
 
 function CabeceraClase({ clase, puedeGestionar, onDelete }) {
   return (
-    <div className="card p-5 sm:p-6 md:p-8 mb-5 sm:mb-6">
+    <div className="card p-5 sm:p-6 md:p-8 mb-5 sm:mb-6 animate-fade-up">
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -258,9 +286,7 @@ function ResumenPrecio({ clase }) {
       <div className="flex items-baseline gap-2">
         <Euro size={18} className="text-accent-deep" />
         <span className="font-display text-2xl">{clase.precioUnitario}€</span>
-        <span className="text-sm text-ink-500">
-          /{clase.unidad === 'horas' ? 'hora' : 'día'}
-        </span>
+        <span className="text-sm text-ink-500">/{clase.unidad === 'horas' ? 'hora' : 'día'}</span>
       </div>
     );
   }

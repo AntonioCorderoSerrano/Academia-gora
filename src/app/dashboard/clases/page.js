@@ -18,7 +18,7 @@ export default function ClasesPage() {
   const { user, profile, hasRole } = useAuth();
   const [clases, setClases] = useState([]);
   const [filtro, setFiltro] = useState('');
-  const [tabActivo, setTabActivo] = useState('mias'); // 'mias' | 'disponibles'
+  const [tabActivo, setTabActivo] = useState('mias');
 
   useEffect(() => {
     if (!user || !profile) return;
@@ -31,7 +31,6 @@ export default function ClasesPage() {
 
   const esTutorOAlumno = profile.role === ROLES.ALUMNO || profile.role === ROLES.TUTOR;
 
-  // "Mis clases": donde el usuario (o sus hijos) ya está inscrito
   const misClases = clases.filter((c) => {
     if (profile.role === ROLES.ADMIN) return true;
     if (profile.role === ROLES.MAESTRO) return c.maestroId === user.uid;
@@ -43,7 +42,6 @@ export default function ClasesPage() {
     return false;
   });
 
-  // "Disponibles": clases donde puede inscribirse (solo alumno/tutor)
   const disponibles = esTutorOAlumno
     ? clases.filter((c) => !misClases.some((m) => m.id === c.id))
     : [];
@@ -59,7 +57,7 @@ export default function ClasesPage() {
 
   return (
     <div>
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
+      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8 animate-fade-up">
         <div>
           <h1 className="font-display text-3xl sm:text-4xl">Clases</h1>
           <p className="text-ink-600 text-sm sm:text-base">
@@ -77,9 +75,8 @@ export default function ClasesPage() {
         )}
       </header>
 
-      {/* Tabs mis / disponibles (solo para alumno/tutor) */}
       {esTutorOAlumno && (
-        <div className="flex gap-1 mb-5 border-b border-ink-200 overflow-x-auto scrollbar-none">
+        <div className="flex gap-1 mb-5 border-b border-ink-200 overflow-x-auto scrollbar-none animate-fade-up" style={{ animationDelay: '80ms' }}>
           <button onClick={() => setTabActivo('mias')}
             className={`px-4 py-2.5 text-sm border-b-2 -mb-px whitespace-nowrap transition ${
               tabActivo === 'mias' ? 'border-accent text-ink-900 font-medium' : 'border-transparent text-ink-500'
@@ -95,7 +92,7 @@ export default function ClasesPage() {
         </div>
       )}
 
-      <div className="card p-2 mb-5 sm:mb-6 flex items-center">
+      <div className="card p-2 mb-5 sm:mb-6 flex items-center animate-fade-up" style={{ animationDelay: '120ms' }}>
         <Search size={18} className="ml-3 text-ink-400 shrink-0" />
         <input placeholder="Buscar…"
           value={filtro} onChange={(e) => setFiltro(e.target.value)}
@@ -103,7 +100,7 @@ export default function ClasesPage() {
       </div>
 
       {mostrar.length === 0 ? (
-        <div className="card p-8 sm:p-10 text-center text-ink-500 text-sm sm:text-base">
+        <div className="card p-8 sm:p-10 text-center text-ink-500 text-sm sm:text-base animate-fade-up">
           {tabActivo === 'disponibles'
             ? 'No hay más clases disponibles por ahora.'
             : esTutorOAlumno
@@ -112,7 +109,11 @@ export default function ClasesPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-          {mostrar.map((c) => <TarjetaClase key={c.id} clase={c} />)}
+          {mostrar.map((c, i) => (
+            <div key={c.id} className="animate-fade-up" style={{ animationDelay: `${160 + i * 60}ms` }}>
+              <TarjetaClase clase={c} />
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -135,10 +136,7 @@ function TarjetaClase({ clase }) {
     precioLabel = `${clase.precioUnitario}€/${clase.unidad === 'horas' ? 'hora' : 'día'}`;
   } else if (clase.tipo === TIPO_CLASE.CAMPAMENTO) {
     const precios = Object.values(clase.opciones || {}).map((o) => o.precio);
-    if (precios.length) {
-      const min = Math.min(...precios);
-      precioLabel = `Desde ${min}€`;
-    }
+    if (precios.length) precioLabel = `Desde ${Math.min(...precios)}€`;
   }
 
   const totalCupo = clase.tipo === TIPO_CLASE.CAMPAMENTO
@@ -147,7 +145,7 @@ function TarjetaClase({ clase }) {
 
   return (
     <Link href={`/dashboard/clases/${clase.id}`}
-      className="card p-4 sm:p-5 hover:shadow-elegant transition group">
+      className="card p-4 sm:p-5 group block h-full">
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
           <Icon size={16} className="text-accent-deep" strokeWidth={1.5} />

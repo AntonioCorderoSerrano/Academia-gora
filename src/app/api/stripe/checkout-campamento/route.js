@@ -11,10 +11,9 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Faltan datos' }, { status: 400 });
     }
 
-    const { uid, clase, customerId } = await preparePagoContext(req, { claseId });
-
+    const { uid, clase, inscripciones, customerId } = await preparePagoContext(req, { claseId });
     if (clase.tipo !== 'campamento') {
-      return NextResponse.json({ error: 'Tipo de clase no válido' }, { status: 400 });
+      return NextResponse.json({ error: 'Tipo no válido' }, { status: 400 });
     }
 
     const sede = clase.sedes?.[sedeId];
@@ -22,20 +21,16 @@ export async function POST(req) {
     if (!sede) return NextResponse.json({ error: 'Sede no válida' }, { status: 400 });
     if (!opcion) return NextResponse.json({ error: 'Opción no válida' }, { status: 400 });
 
-    // Validar cupo de la SEDE concreta
-    validarCupo(clase, sedeId);
+    validarCupo(clase, inscripciones, sedeId);
 
     const precioBase = Math.round(Number(opcion.precio) * 100);
-    const precioComedor = conComedor && clase.comedorDisponible
-      ? Math.round(Number(clase.precioComedor || 0) * 100)
-      : 0;
+    const precioComedor = conComedor && clase.comedor_disponible
+      ? Math.round(Number(clase.precio_comedor || 0) * 100) : 0;
 
     const lineItems = [{
       price_data: {
         currency: 'eur',
-        product_data: {
-          name: `${clase.nombre} — ${opcion.label} · ${sede.nombre}`,
-        },
+        product_data: { name: `${clase.nombre} — ${opcion.label} · ${sede.nombre}` },
         unit_amount: precioBase,
       },
       quantity: 1,
@@ -68,9 +63,6 @@ export async function POST(req) {
     return NextResponse.json({ sessionId: session.id });
   } catch (err) {
     console.error('checkout-campamento:', err);
-    return NextResponse.json(
-      { error: err.message },
-      { status: err.status || 500 }
-    );
+    return NextResponse.json({ error: err.message }, { status: err.status || 500 });
   }
 }

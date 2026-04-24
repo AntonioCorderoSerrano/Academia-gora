@@ -1,10 +1,6 @@
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { stripe } from '@/lib/stripe';
 
-/**
- * Verifica el ID token y devuelve { uid, userData, clase, customerId }
- * Lanza error si algo falla.
- */
 export async function preparePagoContext(req, { claseId, needsClase = true } = {}) {
   const authHeader = req.headers.get('authorization') || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
@@ -25,7 +21,6 @@ export async function preparePagoContext(req, { claseId, needsClase = true } = {
     if (!clase) throw Object.assign(new Error('Clase no encontrada'), { status: 404 });
   }
 
-  // Reutilizar o crear customer
   let customerId = userData.stripeCustomerId;
   if (!customerId) {
     const customer = await stripe.customers.create({
@@ -40,20 +35,14 @@ export async function preparePagoContext(req, { claseId, needsClase = true } = {
   return { uid, userData, clase, customerId };
 }
 
-/**
- * Valida que haya cupo antes de permitir el pago.
- * Lanza error si no hay cupo.
- */
 export function validarCupo(clase, sedeId = null) {
   if (!clase.alumnos) return;
   const inscritos = sedeId
     ? Object.values(clase.alumnos).filter((a) => a.sedeId === sedeId).length
     : Object.keys(clase.alumnos).length;
-
   const cupo = sedeId
     ? (clase.sedes?.[sedeId]?.cupoMax || 0)
     : (clase.cupoMax || 0);
-
   if (inscritos >= cupo) {
     throw Object.assign(new Error('No hay plazas disponibles'), { status: 409 });
   }
